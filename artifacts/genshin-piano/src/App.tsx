@@ -4,6 +4,7 @@ import "./index.css";
 // ===== TYPES =====
 type Beat = string[];
 type Mode = "free" | "auto" | "practice";
+type Timbre = "piano" | "electric" | "guitar" | "violin" | "musicbox";
 type Song = {
   id: string;
   name: string;
@@ -42,27 +43,159 @@ const JIANPU_NUM: Record<string, string> = {
 // Semitone ratio: multiply any frequency by this to get one semitone higher
 const SEMITONE_RATIO = Math.pow(2, 1 / 12);
 
-// ===== AUDIO =====
-let audioCtx: AudioContext | null = null;
+// ===== AUDIO ENGINE =====
+let audioCtx:        AudioContext  | null = null;
+let masterDry:       GainNode      | null = null;
+let masterWet:       GainNode      | null = null;
+let reverbConvolver: ConvolverNode | null = null;
+let currentTimbre: Timbre = "piano";
+let reverbOn = false;
+
+function _makeImpulse(ctx: AudioContext, dur: number, decay: number): AudioBuffer {
+  const sr = ctx.sampleRate, len = Math.floor(sr * dur);
+  const buf = ctx.createBuffer(2, len, sr);
+  for (let c = 0; c < 2; c++) {
+    const d = buf.getChannelData(c);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+  }
+  return buf;
+}
+
+function _setupRouting(ctx: AudioContext) {
+  masterDry = ctx.createGain(); masterDry.gain.value = 1; masterDry.connect(ctx.destination);
+  masterWet = ctx.createGain(); masterWet.gain.value = 0; masterWet.connect(ctx.destination);
+  reverbConvolver = ctx.createConvolver();
+  reverbConvolver.buffer = _makeImpulse(ctx, 2.5, 2.5);
+  reverbConvolver.connect(masterWet);
+}
 
 function getAudioCtx(): AudioContext {
-  if (!audioCtx) audioCtx = new AudioContext();
+  if (!audioCtx) { audioCtx = new AudioContext(); _setupRouting(audioCtx); }
   if (audioCtx.state === "suspended") audioCtx.resume();
   return audioCtx;
 }
 
+function setTimbre(t: Timbre)  { currentTimbre = t; }
+function setReverb(on: boolean) {
+  reverbOn = on;
+  if (masterDry && masterWet) { masterDry.gain.value = on ? 0.65 : 1; masterWet.gain.value = on ? 0.45 : 0; }
+}
+
+function _out(ctx: AudioContext, node: AudioNode) {
+  if (!masterDry) _setupRouting(ctx);
+  node.connect(masterDry!);
+  if (reverbOn && reverbConvolver) node.connect(reverbConvolver);
+}
+
+// --- Piano: triangle fundamental + sine harmonics ---
+function _piano(ctx: AudioContext, freq: number, vol: number) {
+  const now = ctx.currentTime;
+  const out = ctx.createGain();
+  out.gain.setValueAtTime(0, now);
+  out.gain.linearRampToValueAtTime(vol, now + 0.004);
+  out.gain.exponentialRampToValueAtTime(vol * 0.55, now + 0.09);
+  out.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+  [1, 2, 3, 4, 5].forEach((h, i) => {
+    const o = ctx.createOscillator();
+    o.type = i === 0 ? "triangle" : "sine";
+    o.frequency.value = freq * h;
+    const g = ctx.createGain(); g.gain.value = [1, 0.35, 0.12, 0.05, 0.02][i];
+    o.connect(g); g.connect(out); o.start(now); o.stop(now + 1.6);
+  });
+  _out(ctx, out);
+}
+
+// --- Electric Piano: FM synthesis ---
+function _electric(ctx: AudioContext, freq: number, vol: number) {
+  const now = ctx.currentTime;
+  const out = ctx.createGain();
+  out.gain.setValueAtTime(0, now);
+  out.gain.linearRampToValueAtTime(vol * 0.9, now + 0.006);
+  out.gain.exponentialRampToValueAtTime(vol * 0.35, now + 0.18);
+  out.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+  const mod = ctx.createOscillator(); mod.frequency.value = freq * 2;
+  const modDepth = ctx.createGain(); modDepth.gain.value = freq * 2.8;
+  mod.connect(modDepth);
+  const car = ctx.createOscillator(); car.type = "sine"; car.frequency.value = freq;
+  modDepth.connect(car.frequency);
+  car.connect(out);
+  mod.start(now); mod.stop(now + 1.9);
+  car.start(now); car.stop(now + 1.9);
+  _out(ctx, out);
+}
+
+// --- Guitar: detuned sines + noise burst pluck ---
+function _guitar(ctx: AudioContext, freq: number, vol: number) {
+  const now = ctx.currentTime;
+  const out = ctx.createGain();
+  out.gain.setValueAtTime(vol * 0.9, now);
+  out.gain.exponentialRampToValueAtTime(vol * 0.35, now + 0.07);
+  out.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+  [0, 1.4, -1.1].forEach((det) => {
+    [1, 2, 3, 4].forEach((h, hi) => {
+      const o = ctx.createOscillator(); o.type = "sine";
+      o.frequency.value = freq * h; o.detune.value = det;
+      const g = ctx.createGain(); g.gain.value = [0.4, 0.2, 0.1, 0.04][hi];
+      o.connect(g); g.connect(out); o.start(now); o.stop(now + 1.1);
+    });
+  });
+  const blen = Math.floor(ctx.sampleRate * 0.022);
+  const nbuf = ctx.createBuffer(1, blen, ctx.sampleRate);
+  const nd = nbuf.getChannelData(0);
+  for (let i = 0; i < blen; i++) nd[i] = Math.random() * 2 - 1;
+  const ns = ctx.createBufferSource(); ns.buffer = nbuf;
+  const bpf = ctx.createBiquadFilter(); bpf.type = "bandpass"; bpf.frequency.value = freq; bpf.Q.value = 10;
+  const ng = ctx.createGain(); ng.gain.value = vol * 0.28;
+  ns.connect(bpf); bpf.connect(ng); ng.connect(out); ns.start(now);
+  _out(ctx, out);
+}
+
+// --- Violin: sawtooth + slow bow attack + vibrato LFO ---
+function _violin(ctx: AudioContext, freq: number, vol: number) {
+  const now = ctx.currentTime;
+  const out = ctx.createGain();
+  out.gain.setValueAtTime(0, now);
+  out.gain.linearRampToValueAtTime(vol * 0.75, now + 0.14);
+  out.gain.setValueAtTime(vol * 0.75, now + 0.65);
+  out.gain.exponentialRampToValueAtTime(0.001, now + 1.3);
+  const car = ctx.createOscillator(); car.type = "sawtooth"; car.frequency.value = freq;
+  const lfo = ctx.createOscillator(); lfo.frequency.value = 5.5;
+  const lfoG = ctx.createGain();
+  lfoG.gain.setValueAtTime(0, now);
+  lfoG.gain.linearRampToValueAtTime(freq * 0.006, now + 0.32);
+  lfo.connect(lfoG); lfoG.connect(car.frequency);
+  const lpf = ctx.createBiquadFilter(); lpf.type = "lowpass"; lpf.frequency.value = freq * 4.5;
+  car.connect(lpf); lpf.connect(out);
+  lfo.start(now); lfo.stop(now + 1.4);
+  car.start(now); car.stop(now + 1.4);
+  _out(ctx, out);
+}
+
+// --- Music Box: pure sine + inharmonic partials for bell character ---
+function _musicbox(ctx: AudioContext, freq: number, vol: number) {
+  const now = ctx.currentTime;
+  const out = ctx.createGain();
+  out.gain.setValueAtTime(0, now);
+  out.gain.linearRampToValueAtTime(vol * 0.75, now + 0.002);
+  out.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+  ([[ 1, 1 ], [ 2.756, 0.22 ], [ 5.404, 0.07 ]] as [number, number][]).forEach(([ratio, amp]) => {
+    const o = ctx.createOscillator(); o.type = "sine"; o.frequency.value = freq * ratio;
+    const g = ctx.createGain(); g.gain.value = amp;
+    o.connect(g); g.connect(out); o.start(now); o.stop(now + 2);
+  });
+  _out(ctx, out);
+}
+
 function playFreq(freq: number, octave: "high" | "mid" | "low" = "mid") {
   const ctx = getAudioCtx();
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = octave === "mid" ? "triangle" : "sine";
-  osc.frequency.value = freq;
-  gain.gain.setValueAtTime(0.45, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.9);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + 0.9);
+  const vol = octave === "high" ? 0.35 : octave === "mid" ? 0.42 : 0.38;
+  switch (currentTimbre) {
+    case "piano":    _piano(ctx, freq, vol);    break;
+    case "electric": _electric(ctx, freq, vol); break;
+    case "guitar":   _guitar(ctx, freq, vol);   break;
+    case "violin":   _violin(ctx, freq, vol);   break;
+    case "musicbox": _musicbox(ctx, freq, vol); break;
+  }
 }
 
 function playKey(key: string) {
@@ -242,6 +375,11 @@ export default function App() {
   const [sessionHits, setSessionHits] = useState(0);
   const [sessionAttempts, setSessionAttempts] = useState(0);
   const [showUpload, setShowUpload] = useState(false);
+  const [timbre, setTimbreState] = useState<Timbre>("piano");
+  const [reverbEnabled, setReverbEnabled] = useState(false);
+
+  useEffect(() => { setTimbre(timbre); }, [timbre]);
+  useEffect(() => { setReverb(reverbEnabled); }, [reverbEnabled]);
 
   const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const beatIndexRef = useRef(0);
@@ -523,6 +661,24 @@ export default function App() {
                 ? <button className="ctrl-btn danger" onClick={stopAll}>■ 停止</button>
                 : <button className={`ctrl-btn${mode === "free" ? " practice-btn" : ""}`} onClick={startPractice} disabled={beats.length === 0}>🎯 練習</button>
               }
+
+              {/* Divider */}
+              <div className="ctrl-divider" />
+
+              {/* Timbre selector */}
+              {([ { id: "piano", label: "鋼琴" }, { id: "electric", label: "電子琴" }, { id: "guitar", label: "吉他" }, { id: "violin", label: "提琴" }, { id: "musicbox", label: "音樂盒" } ] as { id: Timbre; label: string }[]).map(({ id, label }) => (
+                <button key={id} className={`ctrl-btn timbre-btn${timbre === id ? " active" : ""}`}
+                  onClick={() => { getAudioCtx(); setTimbreState(id); }}>
+                  {label}
+                </button>
+              ))}
+
+              {/* Reverb toggle */}
+              <div className="ctrl-divider" />
+              <button className={`ctrl-btn${reverbEnabled ? " active" : ""}`}
+                onClick={() => { getAudioCtx(); setReverbEnabled((v) => !v); }}>
+                {reverbEnabled ? "🔊 回音" : "🔇 回音"}
+              </button>
             </div>
           </div>
 
