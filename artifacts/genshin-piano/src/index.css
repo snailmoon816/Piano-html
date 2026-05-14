@@ -856,30 +856,7 @@ body {
   .jianpu-num { font-size: clamp(7px,  2vw,  11px); }
 }
 
-/* ═══ LANDSCAPE MOBILE: height-limited square keys ═══
- * Cap keyboard at 55 dvh so the practice area above stays usable.
- * Key size = min(width-limit, height-limit-within-cap).
- */
-@media (max-height: 520px) and (orientation: landscape) {
-  :root { --lib-width: 160px; }
-  .note-key-badge { width: 56px; height: 56px; font-size: 28px; }
-  .practice-main { padding: 6px; gap: 5px; }
-
-  /*
-   * Keyboard capped at 55dvh → keys must fit inside that cap.
-   * handle: 40px, row-gaps: 2px → available per row = (55dvh − 42px) / 3
-   */
-  .keyboard-area {
-    max-height: 55dvh;
-    overflow: hidden;
-  }
-  .piano-key {
-    --kw: calc((100vw - 6px) / 7);
-    --kh: calc((55dvh - 42px) / 3);
-    width:  min(var(--kw), var(--kh));
-    height: min(var(--kw), var(--kh));
-  }
-}
+/* (Landscape key sizing handled by the comprehensive performance-mode block below) */
 
 /* ═══ PORTRAIT MOBILE ONLY ═══ */
 
@@ -982,19 +959,139 @@ body {
 
 /* ═══ KEYBOARD STATES — landscape only ═══ */
 
-/* collapsed: hide keys, show only the handle bar */
-@media (max-height: 520px) and (orientation: landscape) {
+/* ═══════════════════════════════════════════════════════════════
+ *  MOBILE LANDSCAPE — PERFORMANCE MODE
+ *  @media (max-width: 1023px) and (orientation: landscape)
+ *
+ *  Goals
+ *  ─────
+ *  • No vertical scroll — complete keyboard always visible
+ *  • Library hidden (performance mode)
+ *  • Compact 40px controls bar (BPM + playback + mode)
+ *  • Keyboard fills rest of viewport (~75-80 % screen height)
+ *  • Keys: width = 100vw / 7,  height fills row via flex stretch
+ *  • Expanded overlay: full-screen, keys centred on both axes
+ * ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 1023px) and (orientation: landscape) {
+
+  /* ── Prevent scroll ── */
+  html, body { overflow: hidden; height: 100dvh; }
+  .app { height: 100dvh; overflow: hidden; }
+
+  /* ── Top area: only the compact controls bar (40px) ── */
+  .app-top {
+    flex: 0 0 40px;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Hide library — performance mode */
+  .library { display: none !important; }
+
+  /* Practice: full width, no overflow */
+  .practice { flex: 1; min-width: 0; overflow: hidden; }
+
+  /* Controls bar: single tight row */
+  .practice-header {
+    height: 40px;
+    min-height: 40px;
+    padding: 0 8px;
+    flex-wrap: nowrap;
+    gap: 4px;
+    overflow: hidden;
+    align-items: center;
+  }
+
+  /* Hide non-essential UI in landscape */
+  .timbre-group           { display: none; }
+  .timbre-divider-desktop { display: none; }
+  .practice-main          { display: none; }
+  .lib-toggle             { display: none; }
+
+  /* Song title: small, one line, truncated */
+  .song-title-display {
+    font-size: 11px;
+    flex: 1;
+    min-width: 0;
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Controls row: no wrapping, scroll if needed */
+  .controls {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .controls::-webkit-scrollbar { display: none; }
+  .ctrl-btn { height: 28px; font-size: 11px; padding: 0 8px; }
+  .bpm-val  { width: 40px; height: 24px; font-size: 13px; }
+
+  /* ── Keyboard area: fills all remaining space ── */
+  .keyboard-area {
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    padding: 0;
+    gap: 0;
+    background: var(--bg);
+    overflow: hidden;
+    max-height: unset;        /* clear any old dvh cap */
+  }
+
+  /* Handle bar: compact 36px */
+  .kb-handle {
+    display: flex;
+    height: 36px;
+    min-height: 36px;
+    flex-shrink: 0;
+    padding: 0 10px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+  }
+  .shift-toggle-col { display: none; }
+
+  /* Keys container: flex column stretching to fill */
+  .keyboard-keys {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    overflow: hidden;
+    background: var(--bg);
+    min-height: 0;
+  }
+
+  /* Each row: equal height via flex:1, stretch children */
+  .piano-octave {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    gap: 1px;
+    justify-content: center;
+    align-items: stretch;
+    min-height: 0;
+  }
+
+  /* Keys: width = 100vw / 7, height fills the row */
+  .piano-key {
+    flex: 0 0 calc((100vw - 6px) / 7);
+    width:  calc((100vw - 6px) / 7);
+    height: auto;
+    aspect-ratio: unset;
+    align-self: stretch;
+    min-height: 0;
+  }
+
+  /* ── Collapsed: hide keys, show only handle ── */
   .keyboard-area.kb-collapsed .keyboard-keys { display: none; }
-  .keyboard-area.kb-collapsed { overflow: hidden; max-height: unset; }
-}
+  .keyboard-area.kb-collapsed { overflow: hidden; }
 
-/* ── Normal landscape: centre rows when keys are narrower than 100vw ── */
-@media (max-height: 520px) and (orientation: landscape) {
-  .piano-octave { justify-content: center; }
-}
-
-/* ── Expanded: full-screen centred overlay (landscape only) ── */
-@media (max-height: 520px) and (orientation: landscape) {
+  /* ── Expanded: full-screen overlay, centred ── */
   .keyboard-area.kb-expanded {
     position: fixed;
     inset: 0;
@@ -1003,36 +1100,30 @@ body {
     flex-direction: column;
     overflow: hidden;
   }
-
-  /* Keys area: flex column, both axes centred */
   .keyboard-area.kb-expanded .keyboard-keys {
     flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: center;   /* vertical */
-    align-items: center;       /* horizontal */
+    justify-content: center;
+    align-items: center;
     gap: 4px;
     background: transparent;
     padding: 8px;
   }
-
-  /* Each row: centre its 7 keys */
   .keyboard-area.kb-expanded .piano-octave {
     flex: 0 0 auto;
     justify-content: center;
+    align-items: stretch;
     gap: 4px;
   }
-
-  /*
-   * Elastic key size — uses whichever dimension is the bottleneck:
-   *   width  : (100vw  − 16px padding − 6×4px gaps) / 7
-   *   height : (100dvh − 40px handle − 16px padding − 2×4px row-gaps) / 3
-   */
+  /* Expanded key size: elastic — constrained by whichever axis is smaller */
   .keyboard-area.kb-expanded .piano-key {
-    --kw: calc((100vw  - 16px - 24px) / 7);
-    --kh: calc((100dvh - 40px - 16px - 8px) / 3);
+    --kw: calc((100vw  - 40px) / 7);
+    --kh: calc((100dvh - 36px - 24px) / 3);
+    flex: 0 0 min(var(--kw), var(--kh));
     width:  min(var(--kw), var(--kh));
     height: min(var(--kw), var(--kh));
+    align-self: auto;
   }
 }
 
