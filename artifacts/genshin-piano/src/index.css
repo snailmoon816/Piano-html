@@ -537,12 +537,15 @@ body {
   flex-direction: row;
   align-items: stretch;
   gap: 8px;
-  /* Fixed at 40% of viewport height */
   flex: 0 0 40dvh;
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
+  transition: height 0.25s ease;
 }
+
+/* ── Handle bar: hidden on desktop, shown on mobile ── */
+.kb-handle { display: none; }
 
 /* Left column: shift toggle button */
 .shift-toggle-col {
@@ -709,98 +712,166 @@ body {
  * Formula: available width for 7 keys
  *   = 100vw − keyboard-area-padding(24px) − area-gap(8px) − shift-col(≈50px) − 6×gap(≈12px)
  *   ≈ 100vw − 94px    → per key ≈ (100vw − 94px) / 7
- * We expose this as a single CSS var and apply it below.
  */
 
 /*
  * ══════════════════════════════════════════════════════
- *  RESPONSIVE — PIANO KEY CIRCLE GUARANTEES
+ *  MOBILE KEYBOARD — square 7×3 tightly-packed grid
  *
- *  Desktop (default):
- *    height: 85% of row height  +  aspect-ratio: 1/1
- *    → row is tall enough, keys are square automatically.
+ *  Applies to: portrait phones (≤600px wide)
+ *              AND landscape phones (height ≤520px, landscape)
  *
- *  Portrait narrow (≤ 600px, portrait):
- *    Width is the bottleneck.  7 keys must fit across the screen.
- *    → fix BOTH dimensions with a width-based calc so width = height.
- *
- *  Landscape short (≤ 520px tall, landscape):
- *    Height is the bottleneck.  Rows are small.
- *    → fix BOTH dimensions with a height-based calc (dvh) so width = height.
- *    IMPORTANT: cannot reuse the portrait formula here — 100vw is now the
- *    long edge and would make keys far too big for the short rows.
+ *  Desktop keeps the original circular-key layout untouched.
  * ══════════════════════════════════════════════════════
  */
 
-/* ── Compact landscape (short screens) ── */
-@media (max-height: 520px) and (orientation: landscape) {
-  :root { --lib-width: 160px; }
-  .keyboard-area { padding: 5px 8px 8px; gap: 4px; }
-  .key-letter { font-size: 12px; }
-  .jianpu-num { font-size: 8px; }
-  .note-key-badge { width: 56px; height: 56px; font-size: 28px; }
-  .practice-main { padding: 6px; gap: 5px; }
-  .practice-header { padding: 6px 10px; }
-  .piano-octave { gap: 2px; }
+/* ═══ MOBILE KEYBOARD BASE ═══
+ * Shared by both portrait phones and landscape phones.
+ * Uses a comma-OR so it fires on either condition.
+ */
+@media (max-width: 600px), (max-height: 520px) and (orientation: landscape) {
 
+  /* ── Handle bar ── */
+  .kb-handle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 40px;
+    padding: 0 10px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .kb-shift-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .kb-shift-btn.active {
+    border-color: var(--accent);
+    background: var(--key-active-bg);
+    color: var(--accent-bright);
+    box-shadow: 0 0 8px rgba(212,180,80,0.4);
+  }
+  .kb-shift-icon  { font-size: 15px; font-weight: 800; line-height: 1; }
+  .kb-shift-label { font-size: 11px; font-weight: 700; line-height: 1; }
+
+  .kb-handle-grip {
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border-light);
+  }
+
+  .kb-handle-actions { display: flex; gap: 6px; }
+
+  .kb-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 30px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.15s;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .kb-action-btn:active, .kb-action-btn.active {
+    border-color: var(--accent);
+    background: var(--key-active-bg);
+    color: var(--accent-bright);
+  }
+
+  /* ── Side shift column: hidden on mobile (lives in handle bar now) ── */
+  .shift-toggle-col { display: none; }
+
+  /* ── Keyboard area: column layout, no padding, auto height ── */
+  .keyboard-area {
+    flex-direction: column;
+    padding: 0;
+    gap: 0;
+    flex: 0 0 auto;   /* height = handle + 3 rows of square keys */
+    background: var(--bg); /* dark bg shows as 1px grid lines between keys */
+    overflow: visible;
+  }
+
+  /* ── Keys container: tight grid with 1px gaps ── */
+  .keyboard-keys {
+    gap: 1px;
+    background: var(--bg);
+  }
+
+  /* ── Each octave row: no gap (bg shows as 1px lines) ── */
+  .piano-octave {
+    gap: 1px;
+    justify-content: flex-start;
+    align-items: stretch;
+    flex: 0 0 auto;
+  }
+
+  /* ── Square keys: exactly 1/7 of viewport width ── */
   /*
-   * Height-driven square: both width AND height come from the same
-   * dvh-based formula so they are always identical → perfect circle.
-   *
-   * Keyboard area: 40dvh, padding 13px top+bottom, 3 rows with 4px gaps.
-   * Available per row ≈ (40dvh − 21px) / 3
-   * Key diameter ≈ row × 0.82 (leave a little breathing room)
+   * 7 keys + 6 × 1px gaps = 100vw
+   * key width = (100vw − 6px) / 7
+   * key height = same → perfect square
    */
   .piano-key {
-    --key-d: calc((40dvh - 21px) / 3 * 0.82);
-    width:  var(--key-d);
-    height: var(--key-d);
+    width:  calc((100vw - 6px) / 7);
+    height: calc((100vw - 6px) / 7);
+    border-radius: var(--radius);  /* slightly rounded corners */
     aspect-ratio: unset;
     flex: 0 0 auto;
   }
+
+  /* Font sizes for smaller square keys */
+  .key-letter { font-size: clamp(13px, 4vw, 20px); }
+  .jianpu-num { font-size: clamp(7px,  2vw,  11px); }
 }
 
-/* ── Shared compact tweaks for any narrow screen (≤ 600px) ── */
-@media (max-width: 600px) {
-  .shift-toggle-btn {
-    width:  clamp(32px, 5dvh, 48px);
-    height: clamp(32px, 5dvh, 48px);
-  }
-  .shift-icon  { font-size: 12px; }
-  .shift-label { font-size: 7px; }
-  .shift-key   { display: none; }
-  .piano-octave { gap: 2px; }
-  .key-letter { font-size: clamp(11px, 3.5vw, 16px); }
-  .jianpu-num { font-size: clamp(6px,  2vw,   9px); }
-}
-
-/* ── Portrait-only: width-driven square key size ── */
-/*
- * Scoped to portrait so it never fires in landscape (where the landscape
- * rule above already provides the correct height-driven size).
- *
- * Available width for 7 keys:
- *   100vw − 24px (kbd padding) − 8px (gap) − ~44px (shift col) − 12px (6×2px key gaps)
- *   = 100vw − 88px   →  per key = (100vw − 88px) / 7
+/* ═══ LANDSCAPE MOBILE: height-limited square keys ═══
+ * On a phone in landscape the height per key is the bottleneck.
+ * Override the width-based formula with a height-based one.
+ * Key size = min(width-limit, height-limit) via CSS min().
  */
-@media (max-width: 600px) and (orientation: portrait) {
+@media (max-height: 520px) and (orientation: landscape) {
+  :root { --lib-width: 160px; }
+  .note-key-badge { width: 56px; height: 56px; font-size: 28px; }
+  .practice-main { padding: 6px; gap: 5px; }
+
+  /*
+   * In landscape the keyboard handle takes 40px.
+   * Rows: 3, gaps between rows: 2 × 1px = 2px
+   * Available height per row = (100dvh − 40px − 2px) / 3
+   * Key size = min(width-limited, height-limited)
+   */
   .piano-key {
-    --key-d: calc((100vw - 88px - 6 * 2px) / 7);
-    width:  var(--key-d);
-    height: var(--key-d);
-    aspect-ratio: unset;
-    flex: 0 0 auto;
+    --kw: calc((100vw - 6px) / 7);
+    --kh: calc((100dvh - 40px - 2px) / 3);
+    width:  min(var(--kw), var(--kh));
+    height: min(var(--kw), var(--kh));
   }
 }
 
-/* ── Portrait-only: wrap controls header into three rows ── */
-/*
- * Row 1: [◀] [song title]             (normal flow)
- * Row 2: [BPM ◀ ▶ ↺ ▶自動 🎯練習]    (controls, h-scroll)
- * Row 3: [鋼琴 電子琴 吉他 提琴 音樂盒 | 回音]  (timbre-group, centred)
- *
- * In landscape the screen is wide enough to keep everything in one row.
- */
+/* ═══ PORTRAIT MOBILE ONLY ═══ */
+
+/* Controls header: three-row wrap on portrait narrow screens */
 @media (max-width: 600px) and (orientation: portrait) {
   .practice-header {
     flex-wrap: wrap;
@@ -808,7 +879,6 @@ body {
     gap: 4px;
     align-items: center;
   }
-
   .controls {
     flex: 0 0 100%;
     overflow-x: auto;
@@ -819,7 +889,6 @@ body {
     align-items: center;
   }
   .controls::-webkit-scrollbar { display: none; }
-
   .timbre-group {
     flex: 0 0 100%;
     justify-content: center;
@@ -835,7 +904,7 @@ body {
   .timbre-group .ctrl-btn { height: 30px; font-size: 11px; padding: 0 9px; }
 }
 
-/* Mobile portrait layout (stack library below practice) */
+/* Stack library below practice on portrait mobile */
 @media (max-width: 480px) {
   .app-top { flex-direction: column-reverse; }
   .library {
@@ -847,6 +916,40 @@ body {
   .library.collapsed { max-height: 0; width: 100% !important; }
   .song-list { min-width: unset; }
   .library-empty { min-width: unset; }
+}
+
+/* ═══ KEYBOARD STATES (mobile only — ignored on desktop) ═══ */
+
+/* collapsed: hide the keys, show only the handle bar */
+@media (max-width: 600px), (max-height: 520px) and (orientation: landscape) {
+  .keyboard-area.kb-collapsed .keyboard-keys { display: none; }
+  .keyboard-area.kb-collapsed { overflow: hidden; }
+}
+
+/* expanded: full-screen overlay floating above content */
+@media (max-width: 600px), (max-height: 520px) and (orientation: landscape) {
+  .keyboard-area.kb-expanded {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: var(--bg);
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* In expanded mode, keyboard-keys fills remaining space and centres rows */
+  .keyboard-area.kb-expanded .keyboard-keys {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* Expanded: keys fill the full screen — use the smaller of width & height limits */
+  .keyboard-area.kb-expanded .piano-key {
+    --kw: calc((100vw - 6px) / 7);
+    --kh: calc((100dvh - 40px - 2px) / 3);
+    width:  min(var(--kw), var(--kh));
+    height: min(var(--kw), var(--kh));
+  }
 }
 
 /* ===== MODAL ===== */

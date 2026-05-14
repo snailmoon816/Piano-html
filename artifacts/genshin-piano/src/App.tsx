@@ -380,6 +380,7 @@ export default function App() {
   const [sessionHits, setSessionHits] = useState(0);
   const [sessionAttempts, setSessionAttempts] = useState(0);
   const [combo, setCombo] = useState(0);
+  const [kbState, setKbState] = useState<"normal" | "collapsed" | "expanded">("normal");
   const [showUpload, setShowUpload] = useState(false);
   const [timbre, setTimbreState] = useState<Timbre>("piano");
   const [reverbEnabled, setReverbEnabled] = useState(false);
@@ -798,8 +799,43 @@ export default function App() {
       </div>{/* end app-top */}
 
       {/* ===== KEYBOARD — always bottom row ===== */}
-      <div className="keyboard-area">
-        {/* Shift (升音) toggle button on the left */}
+      <div className={`keyboard-area kb-${kbState}`}>
+
+        {/* ── Handle bar (mobile only — hidden on desktop via CSS) ── */}
+        <div className="kb-handle">
+          {/* Shift toggle lives here on mobile */}
+          <button
+            className={`kb-shift-btn${shiftActive ? " active" : ""}`}
+            onPointerDown={(e) => { e.preventDefault(); setShiftLocked((v) => !v); }}
+            title="升音"
+          >
+            <span className="kb-shift-icon">♯</span>
+            <span className="kb-shift-label">升音</span>
+          </button>
+
+          <div className="kb-handle-grip" />
+
+          <div className="kb-handle-actions">
+            {/* Expand / restore */}
+            <button
+              className={`kb-action-btn${kbState === "expanded" ? " active" : ""}`}
+              onPointerDown={(e) => { e.preventDefault(); setKbState((s) => s === "expanded" ? "normal" : "expanded"); }}
+              title={kbState === "expanded" ? "縮回" : "全螢幕展開"}
+            >
+              {kbState === "expanded" ? "⊡" : "⊞"}
+            </button>
+            {/* Collapse / show */}
+            <button
+              className="kb-action-btn"
+              onPointerDown={(e) => { e.preventDefault(); setKbState((s) => s === "collapsed" ? "normal" : "collapsed"); }}
+              title={kbState === "collapsed" ? "顯示鍵盤" : "收合鍵盤"}
+            >
+              {kbState === "collapsed" ? "▲" : "▼"}
+            </button>
+          </div>
+        </div>
+
+        {/* ── Shift column (desktop only — hidden on mobile via CSS) ── */}
         <div className="shift-toggle-col">
           <button
             className={`shift-toggle-btn${shiftActive ? " active" : ""}`}
