@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Genshin Piano Practice Overlay"
+version = "1.0.0"
+id = "artifacts/genshin-piano"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23620
+
+[services.development]
+run = "pnpm --filter @workspace/genshin-piano run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/genshin-piano", "run", "build" ]
+publicDir = "artifacts/genshin-piano/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23620"
+BASE_PATH = "/"
