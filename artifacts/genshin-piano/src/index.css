@@ -712,7 +712,27 @@ body {
  * We expose this as a single CSS var and apply it below.
  */
 
-/* Compact landscape (short screens) */
+/*
+ * ══════════════════════════════════════════════════════
+ *  RESPONSIVE — PIANO KEY CIRCLE GUARANTEES
+ *
+ *  Desktop (default):
+ *    height: 85% of row height  +  aspect-ratio: 1/1
+ *    → row is tall enough, keys are square automatically.
+ *
+ *  Portrait narrow (≤ 600px, portrait):
+ *    Width is the bottleneck.  7 keys must fit across the screen.
+ *    → fix BOTH dimensions with a width-based calc so width = height.
+ *
+ *  Landscape short (≤ 520px tall, landscape):
+ *    Height is the bottleneck.  Rows are small.
+ *    → fix BOTH dimensions with a height-based calc (dvh) so width = height.
+ *    IMPORTANT: cannot reuse the portrait formula here — 100vw is now the
+ *    long edge and would make keys far too big for the short rows.
+ * ══════════════════════════════════════════════════════
+ */
+
+/* ── Compact landscape (short screens) ── */
 @media (max-height: 520px) and (orientation: landscape) {
   :root { --lib-width: 160px; }
   .keyboard-area { padding: 5px 8px 8px; gap: 4px; }
@@ -721,50 +741,67 @@ body {
   .note-key-badge { width: 56px; height: 56px; font-size: 28px; }
   .practice-main { padding: 6px; gap: 5px; }
   .practice-header { padding: 6px 10px; }
+  .piano-octave { gap: 2px; }
 
-  /* Landscape: height is short, so clamp key size to row height */
+  /*
+   * Height-driven square: both width AND height come from the same
+   * dvh-based formula so they are always identical → perfect circle.
+   *
+   * Keyboard area: 40dvh, padding 13px top+bottom, 3 rows with 4px gaps.
+   * Available per row ≈ (40dvh − 21px) / 3
+   * Key diameter ≈ row × 0.82 (leave a little breathing room)
+   */
   .piano-key {
-    height: min(85%, calc((100vw - 94px - 6 * 3px) / 7));
-    width:  min(85%, calc((100vw - 94px - 6 * 3px) / 7));
+    --key-d: calc((40dvh - 21px) / 3 * 0.82);
+    width:  var(--key-d);
+    height: var(--key-d);
     aspect-ratio: unset;
+    flex: 0 0 auto;
   }
 }
 
-/* Mobile portrait (narrow screens ≤ 600px) */
+/* ── Shared compact tweaks for any narrow screen (≤ 600px) ── */
 @media (max-width: 600px) {
-  /* Compact shift button so it wastes less horizontal space */
   .shift-toggle-btn {
     width:  clamp(32px, 5dvh, 48px);
     height: clamp(32px, 5dvh, 48px);
   }
   .shift-icon  { font-size: 12px; }
   .shift-label { font-size: 7px; }
-  .shift-key   { display: none; } /* hide "Shift" hint text on mobile */
-
+  .shift-key   { display: none; }
   .piano-octave { gap: 2px; }
+  .key-letter { font-size: clamp(11px, 3.5vw, 16px); }
+  .jianpu-num { font-size: clamp(6px,  2vw,   9px); }
+}
 
-  /*
-   * Width-driven key size: exactly square = perfectly circular.
-   * Available ≈ 100vw − 24px padding − 8px gap − 44px shift − 6×2px gaps = 100vw − 88px
-   */
+/* ── Portrait-only: width-driven square key size ── */
+/*
+ * Scoped to portrait so it never fires in landscape (where the landscape
+ * rule above already provides the correct height-driven size).
+ *
+ * Available width for 7 keys:
+ *   100vw − 24px (kbd padding) − 8px (gap) − ~44px (shift col) − 12px (6×2px key gaps)
+ *   = 100vw − 88px   →  per key = (100vw − 88px) / 7
+ */
+@media (max-width: 600px) and (orientation: portrait) {
   .piano-key {
-    width:  calc((100vw - 88px - 6 * 2px) / 7);
-    height: calc((100vw - 88px - 6 * 2px) / 7);
+    --key-d: calc((100vw - 88px - 6 * 2px) / 7);
+    width:  var(--key-d);
+    height: var(--key-d);
     aspect-ratio: unset;
     flex: 0 0 auto;
   }
+}
 
-  .key-letter { font-size: clamp(11px, 3.5vw, 16px); }
-  .jianpu-num { font-size: clamp(6px, 2vw, 9px); }
-
-  /*
-   * ── Controls header: two extra wrapped rows on mobile ──
-   * Row 1: [◀ lib-toggle] [song title]           — normal flow, fills width
-   * Row 2: [BPM ◀ ▶ ↺ ▶自動 🎯練習]              — controls, scrollable
-   * Row 3: [鋼琴 電子琴 吉他 提琴 音樂盒 | 回音]  — timbre-group, centred
-   *
-   * flex: 0 0 100% on rows 2 & 3 forces each to its own line.
-   */
+/* ── Portrait-only: wrap controls header into three rows ── */
+/*
+ * Row 1: [◀] [song title]             (normal flow)
+ * Row 2: [BPM ◀ ▶ ↺ ▶自動 🎯練習]    (controls, h-scroll)
+ * Row 3: [鋼琴 電子琴 吉他 提琴 音樂盒 | 回音]  (timbre-group, centred)
+ *
+ * In landscape the screen is wide enough to keep everything in one row.
+ */
+@media (max-width: 600px) and (orientation: portrait) {
   .practice-header {
     flex-wrap: wrap;
     padding: 5px 8px;
@@ -772,7 +809,6 @@ body {
     align-items: center;
   }
 
-  /* Transport controls: own row, scroll horizontally */
   .controls {
     flex: 0 0 100%;
     overflow-x: auto;
@@ -784,7 +820,6 @@ body {
   }
   .controls::-webkit-scrollbar { display: none; }
 
-  /* Timbre group: own full-width row, centred, scrollable if very narrow */
   .timbre-group {
     flex: 0 0 100%;
     justify-content: center;
@@ -796,9 +831,7 @@ body {
     gap: 4px;
   }
   .timbre-group::-webkit-scrollbar { display: none; }
-  /* Hide the desktop-only separator (border-top replaces it on mobile) */
   .timbre-divider-desktop { display: none; }
-  /* Slightly larger timbre buttons for easier tapping */
   .timbre-group .ctrl-btn { height: 30px; font-size: 11px; padding: 0 9px; }
 }
 
