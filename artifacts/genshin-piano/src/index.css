@@ -929,37 +929,38 @@ body {
   }
 }
 
-/* Stack library below practice on portrait mobile, with collapsible/expandable header */
+/* Stack library below practice on portrait mobile */
 @media (max-width: 480px) {
   .app-top { flex-direction: column-reverse; }
 
+  /* Library always shows its header (glued above keyboard); songs hidden by default */
   .library {
     width: 100% !important;
-    /* Compact: shows ~2 songs */
-    max-height: 128px;
+    max-height: 44px;           /* header only */
     overflow: hidden;
     border-right: none;
     border-top: 1px solid var(--border);
     transition: max-height 0.3s ease;
   }
 
-  /* Expanded: shows 5 songs (5 × 52px + header 44px + padding 8px ≈ 312px) */
-  .library.lib-expanded {
-    max-height: 312px;
-  }
+  /* Collapsed state on mobile = same as default: just the header strip */
+  .library.collapsed { max-height: 44px !important; }
 
-  .library.collapsed { max-height: 0 !important; }
+  /* Expanded: shows ~5 songs (5 × 52px song + 44px header ≈ 304px) */
+  .library.lib-expanded { max-height: 304px; }
 
   .song-list { min-width: unset; }
   .library-empty { min-width: unset; }
 
-  /* ── Mobile header action buttons ── */
-  .lib-header-expand,
-  .lib-header-close {
+  /* Hide the practice-header lib-toggle on mobile (library header takes over) */
+  .lib-toggle { display: none; }
+
+  /* ── Mobile expand toggle button ── */
+  .lib-header-expand {
     display: flex;
     align-items: center;
     height: 26px;
-    padding: 0 8px;
+    padding: 0 10px;
     border-radius: var(--radius);
     border: 1px solid var(--border-light);
     background: var(--bg-card);
@@ -972,12 +973,11 @@ body {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
   }
-  .lib-header-expand:active { border-color: var(--accent-dim); color: var(--accent); }
-  .lib-header-close  { padding: 0 9px; font-size: 13px; }
-  .lib-header-close:active { border-color: var(--danger); color: var(--danger); }
-
-  /* Re-open arrow in practice header */
-  .lib-toggle { font-size: 16px; padding: 0 8px; }
+  .lib-header-expand:active,
+  .library.lib-expanded .lib-header-expand {
+    border-color: var(--accent-dim);
+    color: var(--accent);
+  }
 }
 
 /* ═══ KEYBOARD STATES — landscape only ═══ */

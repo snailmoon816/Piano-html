@@ -619,18 +619,12 @@ export default function App() {
             <h2>曲庫</h2>
             <div className="lib-header-actions">
               <button className="upload-btn" onClick={() => setShowUpload(true)}>+ 上傳</button>
-              {/* Mobile-only: expand toggle */}
+              {/* Mobile-only: single expand/collapse toggle */}
               <button
                 className="lib-header-expand"
                 onClick={() => setLibExpanded((v) => !v)}
-                title={libExpanded ? "縮回" : "展開顯示更多"}
-              >{libExpanded ? "▼ 縮回" : "▲ 展開"}</button>
-              {/* Mobile-only: collapse button */}
-              <button
-                className="lib-header-close"
-                onClick={() => { setLibraryOpen(false); setLibExpanded(false); }}
-                title="收合曲庫"
-              >✕</button>
+                title={libExpanded ? "收合曲庫" : "展開曲庫"}
+              >{libExpanded ? "▼ 收合" : "▲ 展開"}</button>
             </div>
           </div>
           <div className="song-list">
