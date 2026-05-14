@@ -988,27 +988,49 @@ body {
   .keyboard-area.kb-collapsed { overflow: hidden; max-height: unset; }
 }
 
-/* expanded: full-screen overlay (landscape only) */
+/* ── Normal landscape: centre rows when keys are narrower than 100vw ── */
+@media (max-height: 520px) and (orientation: landscape) {
+  .piano-octave { justify-content: center; }
+}
+
+/* ── Expanded: full-screen centred overlay (landscape only) ── */
 @media (max-height: 520px) and (orientation: landscape) {
   .keyboard-area.kb-expanded {
     position: fixed;
     inset: 0;
     z-index: 50;
-    background: var(--bg);
+    background: var(--bg-panel);
     flex-direction: column;
     overflow: hidden;
   }
 
-  /* In expanded mode, keyboard-keys fills remaining space and centres rows */
+  /* Keys area: flex column, both axes centred */
   .keyboard-area.kb-expanded .keyboard-keys {
     flex: 1;
-    justify-content: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;   /* vertical */
+    align-items: center;       /* horizontal */
+    gap: 4px;
+    background: transparent;
+    padding: 8px;
   }
 
-  /* Expanded: keys fill the full screen — use the smaller of width & height limits */
+  /* Each row: centre its 7 keys */
+  .keyboard-area.kb-expanded .piano-octave {
+    flex: 0 0 auto;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  /*
+   * Elastic key size — uses whichever dimension is the bottleneck:
+   *   width  : (100vw  − 16px padding − 6×4px gaps) / 7
+   *   height : (100dvh − 40px handle − 16px padding − 2×4px row-gaps) / 3
+   */
   .keyboard-area.kb-expanded .piano-key {
-    --kw: calc((100vw - 6px) / 7);
-    --kh: calc((100dvh - 40px - 2px) / 3);
+    --kw: calc((100vw  - 16px - 24px) / 7);
+    --kh: calc((100dvh - 40px - 16px - 8px) / 3);
     width:  min(var(--kw), var(--kh));
     height: min(var(--kw), var(--kh));
   }
