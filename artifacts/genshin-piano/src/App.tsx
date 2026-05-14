@@ -373,6 +373,7 @@ export default function App() {
   const bpmRef = useRef(80);
   useEffect(() => { bpmRef.current = bpm; }, [bpm]);
   const [libraryOpen, setLibraryOpen] = useState(true);
+  const [libExpanded, setLibExpanded] = useState(false);
 
   const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
   const [flashKeys, setFlashKeys] = useState<Map<string, "correct" | "wrong">>(new Map());
@@ -613,16 +614,24 @@ export default function App() {
       <div className="app-top">
 
         {/* ===== LIBRARY ===== */}
-        <aside className={`library${libraryOpen ? "" : " collapsed"}`}>
+        <aside className={`library${libraryOpen ? "" : " collapsed"}${libExpanded ? " lib-expanded" : ""}`}>
           <div className="library-header">
             <h2>曲庫</h2>
-            <button className="upload-btn" onClick={() => setShowUpload(true)}>+ 上傳</button>
-            {/* Mobile-only: collapse button inside the library header */}
-            <button
-              className="lib-header-close"
-              onClick={() => setLibraryOpen(false)}
-              title="收合曲庫"
-            >▼ 收合</button>
+            <div className="lib-header-actions">
+              <button className="upload-btn" onClick={() => setShowUpload(true)}>+ 上傳</button>
+              {/* Mobile-only: expand toggle */}
+              <button
+                className="lib-header-expand"
+                onClick={() => setLibExpanded((v) => !v)}
+                title={libExpanded ? "縮回" : "展開顯示更多"}
+              >{libExpanded ? "▼ 縮回" : "▲ 展開"}</button>
+              {/* Mobile-only: collapse button */}
+              <button
+                className="lib-header-close"
+                onClick={() => { setLibraryOpen(false); setLibExpanded(false); }}
+                title="收合曲庫"
+              >✕</button>
+            </div>
           </div>
           <div className="song-list">
             {songs.length === 0 && (

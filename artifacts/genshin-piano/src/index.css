@@ -79,13 +79,23 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 12px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   white-space: nowrap;
+  gap: 6px;
 }
+
+/* Wrapper for upload + mobile expand/close buttons */
+.lib-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* Hidden on desktop; shown only on mobile via @media (max-width: 480px) */
-.lib-header-close { display: none; }
+.lib-header-close   { display: none; }
+.lib-header-expand  { display: none; }
 
 .library-header h2 {
   font-size: 12px;
@@ -919,28 +929,37 @@ body {
   }
 }
 
-/* Stack library below practice on portrait mobile, with collapsible header */
+/* Stack library below practice on portrait mobile, with collapsible/expandable header */
 @media (max-width: 480px) {
   .app-top { flex-direction: column-reverse; }
+
   .library {
     width: 100% !important;
-    max-height: 160px;
+    /* Compact: shows ~2 songs */
+    max-height: 128px;
     overflow: hidden;
     border-right: none;
     border-top: 1px solid var(--border);
-    transition: max-height 0.25s ease;
+    transition: max-height 0.3s ease;
   }
-  .library.collapsed { max-height: 0 !important; width: 100% !important; }
+
+  /* Expanded: shows 5 songs (5 × 52px + header 44px + padding 8px ≈ 312px) */
+  .library.lib-expanded {
+    max-height: 312px;
+  }
+
+  .library.collapsed { max-height: 0 !important; }
+
   .song-list { min-width: unset; }
   .library-empty { min-width: unset; }
 
-  /* Close button inside library header (mobile only) */
+  /* ── Mobile header action buttons ── */
+  .lib-header-expand,
   .lib-header-close {
     display: flex;
     align-items: center;
-    gap: 4px;
-    height: 28px;
-    padding: 0 10px;
+    height: 26px;
+    padding: 0 8px;
     border-radius: var(--radius);
     border: 1px solid var(--border-light);
     background: var(--bg-card);
@@ -950,13 +969,14 @@ body {
     cursor: pointer;
     transition: all 0.15s;
     white-space: nowrap;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
-  .lib-header-close:active {
-    border-color: var(--accent-dim);
-    color: var(--accent);
-  }
+  .lib-header-expand:active { border-color: var(--accent-dim); color: var(--accent); }
+  .lib-header-close  { padding: 0 9px; font-size: 13px; }
+  .lib-header-close:active { border-color: var(--danger); color: var(--danger); }
 
-  /* Show the re-open arrow in practice header more prominently on mobile */
+  /* Re-open arrow in practice header */
   .lib-toggle { font-size: 16px; padding: 0 8px; }
 }
 
