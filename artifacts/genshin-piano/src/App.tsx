@@ -617,6 +617,12 @@ export default function App() {
           <div className="library-header">
             <h2>曲庫</h2>
             <button className="upload-btn" onClick={() => setShowUpload(true)}>+ 上傳</button>
+            {/* Mobile-only: collapse button inside the library header */}
+            <button
+              className="lib-header-close"
+              onClick={() => setLibraryOpen(false)}
+              title="收合曲庫"
+            >▼ 收合</button>
           </div>
           <div className="song-list">
             {songs.length === 0 && (
