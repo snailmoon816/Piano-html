@@ -259,6 +259,16 @@ body {
   padding: 0 7px;
 }
 
+/* Timbre + reverb group */
+.timbre-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+/* Desktop-only divider (before the group) — hidden on mobile where we use a border-top instead */
+.timbre-divider-desktop { flex-shrink: 0; }
+
 .ctrl-btn {
   display: flex;
   align-items: center;
@@ -468,6 +478,15 @@ body {
 .stat-chip .val { font-size: 18px; font-weight: 700; color: var(--text); line-height: 1; }
 .stat-chip .lbl { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
 .stat-divider { width: 1px; height: 30px; background: var(--border); }
+
+/* ===== COMBO CHIP ===== */
+.combo-chip { animation: combo-pop 0.2s ease; }
+.combo-chip .combo-val { font-size: 18px; font-weight: 800; color: #f97316; line-height: 1; }
+.combo-chip.combo-hot .combo-val { color: #ef4444; text-shadow: 0 0 10px rgba(239,68,68,0.6); }
+@keyframes combo-pop {
+  0%   { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
 
 .accuracy-good { color: var(--success); }
 .accuracy-mid  { color: var(--accent); }
@@ -737,7 +756,50 @@ body {
 
   .key-letter { font-size: clamp(11px, 3.5vw, 16px); }
   .jianpu-num { font-size: clamp(6px, 2vw, 9px); }
-  .controls { gap: 3px; }
+
+  /*
+   * ── Controls header: two extra wrapped rows on mobile ──
+   * Row 1: [◀ lib-toggle] [song title]           — normal flow, fills width
+   * Row 2: [BPM ◀ ▶ ↺ ▶自動 🎯練習]              — controls, scrollable
+   * Row 3: [鋼琴 電子琴 吉他 提琴 音樂盒 | 回音]  — timbre-group, centred
+   *
+   * flex: 0 0 100% on rows 2 & 3 forces each to its own line.
+   */
+  .practice-header {
+    flex-wrap: wrap;
+    padding: 5px 8px;
+    gap: 4px;
+    align-items: center;
+  }
+
+  /* Transport controls: own row, scroll horizontally */
+  .controls {
+    flex: 0 0 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    gap: 3px;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  .controls::-webkit-scrollbar { display: none; }
+
+  /* Timbre group: own full-width row, centred, scrollable if very narrow */
+  .timbre-group {
+    flex: 0 0 100%;
+    justify-content: center;
+    padding: 3px 0;
+    border-top: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  .timbre-group::-webkit-scrollbar { display: none; }
+  /* Hide the desktop-only separator (border-top replaces it on mobile) */
+  .timbre-divider-desktop { display: none; }
+  /* Slightly larger timbre buttons for easier tapping */
+  .timbre-group .ctrl-btn { height: 30px; font-size: 11px; padding: 0 9px; }
 }
 
 /* Mobile portrait layout (stack library below practice) */

@@ -379,6 +379,7 @@ export default function App() {
   const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set());
   const [sessionHits, setSessionHits] = useState(0);
   const [sessionAttempts, setSessionAttempts] = useState(0);
+  const [combo, setCombo] = useState(0);
   const [showUpload, setShowUpload] = useState(false);
   const [timbre, setTimbreState] = useState<Timbre>("piano");
   const [reverbEnabled, setReverbEnabled] = useState(false);
@@ -446,6 +447,7 @@ export default function App() {
     const currentBeats = beatsRef.current;
     setSessionHits((h) => h + 1);
     setSessionAttempts((a) => a + 1);
+    setCombo((c) => c + 1);
     advanceBeat(beatIdx, currentBeats, Math.round(60000 / bpmRef.current), (newIdx) => {
       setBeatIndex(newIdx); beatIndexRef.current = newIdx;
       if (newIdx >= currentBeats.length) {
@@ -498,6 +500,7 @@ export default function App() {
       setPendingKeys(new Set(pending)); pendingRef.current = new Set(pending);
       if (pending.size === 0) completeBeat(currentIdx);
     } else {
+      setCombo(0);
       doFlashKey(key, "wrong");
       setSessionAttempts((a) => a + 1);
     }
@@ -538,6 +541,7 @@ export default function App() {
   function stopAll() {
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
     setMode("free"); modeRef.current = "free";
+    setCombo(0);
   }
 
   function startAutoPlay() {
@@ -571,7 +575,7 @@ export default function App() {
 
   function restart() {
     stopAll(); setBeatIndex(0); beatIndexRef.current = 0;
-    setSessionHits(0); setSessionAttempts(0); setPendingKeys(new Set());
+    setSessionHits(0); setSessionAttempts(0); setCombo(0); setPendingKeys(new Set());
   }
 
   function stepForward() {
@@ -673,18 +677,17 @@ export default function App() {
                 : <button className={`ctrl-btn${mode === "free" ? " practice-btn" : ""}`} onClick={startPractice} disabled={beats.length === 0}>🎯 練習</button>
               }
 
-              {/* Divider */}
-              <div className="ctrl-divider" />
+            </div>
 
-              {/* Timbre selector */}
+            {/* Timbre + reverb — sibling of controls so it can independently wrap on mobile */}
+            <div className="timbre-group">
+              <div className="ctrl-divider timbre-divider-desktop" />
               {([ { id: "piano", label: "鋼琴" }, { id: "electric", label: "電子琴" }, { id: "guitar", label: "吉他" }, { id: "violin", label: "提琴" }, { id: "musicbox", label: "音樂盒" } ] as { id: Timbre; label: string }[]).map(({ id, label }) => (
                 <button key={id} className={`ctrl-btn timbre-btn${timbre === id ? " active" : ""}`}
                   onClick={() => { getAudioCtx(); setTimbreState(id); }}>
                   {label}
                 </button>
               ))}
-
-              {/* Reverb toggle */}
               <div className="ctrl-divider" />
               <button className={`ctrl-btn${reverbEnabled ? " active" : ""}`}
                 onClick={() => { getAudioCtx(); setReverbEnabled((v) => !v); }}>
@@ -775,6 +778,15 @@ export default function App() {
                           {sessionAcc}%
                         </div>
                         <div className="lbl">準確率</div>
+                      </div>
+                    </>
+                  )}
+                  {combo > 1 && (
+                    <>
+                      <div className="stat-divider" />
+                      <div className={`stat-chip combo-chip${combo >= 10 ? " combo-hot" : ""}`}>
+                        <div className="val combo-val">🔥{combo}</div>
+                        <div className="lbl">連擊</div>
                       </div>
                     </>
                   )}
