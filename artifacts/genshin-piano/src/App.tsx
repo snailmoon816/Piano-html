@@ -229,11 +229,11 @@ function UploadModal({ onClose, onSave }: { onClose: () => void; onSave: (name: 
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal">
-        <h3>Upload Song</h3>
-        <input type="text" placeholder="Song name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        <h3>上傳歌曲</h3>
+        <input type="text" placeholder="歌曲名稱" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
         <div style={{ marginBottom: 10 }}>
           <button className="ctrl-btn" style={{ width: "100%", justifyContent: "center", marginBottom: 8 }} onClick={() => fileRef.current?.click()}>
-            📂 Choose .txt file
+            📂 選擇 .txt 檔案
           </button>
           <input ref={fileRef} type="file" accept=".txt,text/plain" style={{ display: "none" }} onChange={handleFile} />
           {content && (
@@ -243,12 +243,12 @@ function UploadModal({ onClose, onSave }: { onClose: () => void; onSave: (name: 
           )}
         </div>
         <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 12 }}>
-          Format: <code style={{ color: "var(--accent)" }}>A S D Q Z</code> — space = separate beat,
-          no-space = chord <code style={{ color: "var(--accent)" }}>AQ</code>, dash = rest <code style={{ color: "var(--accent)" }}>-</code>
+          格式：<code style={{ color: "var(--accent)" }}>A S D Q Z</code> — 空格 = 分拍，
+          無空格 = 和弦 <code style={{ color: "var(--accent)" }}>AQ</code>，橫線 = 休止 <code style={{ color: "var(--accent)" }}>-</code>
         </div>
         <div className="modal-actions">
-          <button className="ctrl-btn" onClick={onClose}>Cancel</button>
-          <button className="ctrl-btn active" onClick={handleSave} disabled={!name.trim() || !content.trim()}>Save Song</button>
+          <button className="ctrl-btn" onClick={onClose}>取消</button>
+          <button className="ctrl-btn active" onClick={handleSave} disabled={!name.trim() || !content.trim()}>儲存歌曲</button>
         </div>
       </div>
     </div>
@@ -476,14 +476,14 @@ export default function App() {
         {/* ===== LIBRARY ===== */}
         <aside className={`library${libraryOpen ? "" : " collapsed"}`}>
           <div className="library-header">
-            <h2>Songs</h2>
-            <button className="upload-btn" onClick={() => setShowUpload(true)}>+ Upload</button>
+            <h2>曲庫</h2>
+            <button className="upload-btn" onClick={() => setShowUpload(true)}>+ 上傳</button>
           </div>
           <div className="song-list">
             {songs.length === 0 && (
               <div className="library-empty">
                 <p>🎵</p>
-                <p>No songs yet.<br />Upload a .txt score to start.</p>
+                <p>尚無歌曲。<br />上傳 .txt 樂譜開始練習。</p>
               </div>
             )}
             {songs.map((song) => {
@@ -512,13 +512,13 @@ export default function App() {
             <button
               className="lib-toggle"
               onClick={() => setLibraryOpen((o) => !o)}
-              title={libraryOpen ? "Collapse library" : "Expand library"}
+              title={libraryOpen ? "收合曲庫" : "展開曲庫"}
             >
               {libraryOpen ? "◀" : "▶"}
             </button>
 
             <div className={`song-title-display${activeSong ? "" : " placeholder"}`}>
-              {activeSong ? activeSong.name : "No song loaded"}
+              {activeSong ? activeSong.name : "尚未載入歌曲"}
             </div>
 
             <div className="controls">
@@ -531,12 +531,12 @@ export default function App() {
               <button className="ctrl-btn" onClick={stepForward} disabled={beatIndex >= beats.length || mode !== "free"}>▶</button>
               <button className="ctrl-btn" onClick={restart}     disabled={beats.length === 0}>↺</button>
               {mode === "auto"
-                ? <button className="ctrl-btn danger" onClick={stopAll}>■ Stop</button>
-                : <button className="ctrl-btn active" onClick={startAutoPlay} disabled={beats.length === 0}>▶ Auto</button>
+                ? <button className="ctrl-btn danger" onClick={stopAll}>■ 停止</button>
+                : <button className="ctrl-btn active" onClick={startAutoPlay} disabled={beats.length === 0}>▶ 自動</button>
               }
               {mode === "practice"
-                ? <button className="ctrl-btn danger" onClick={stopAll}>■ Stop</button>
-                : <button className={`ctrl-btn${mode === "free" ? " practice-btn" : ""}`} onClick={startPractice} disabled={beats.length === 0}>🎯 Practice</button>
+                ? <button className="ctrl-btn danger" onClick={stopAll}>■ 停止</button>
+                : <button className={`ctrl-btn${mode === "free" ? " practice-btn" : ""}`} onClick={startPractice} disabled={beats.length === 0}>🎯 練習</button>
               }
             </div>
           </div>
@@ -572,21 +572,21 @@ export default function App() {
             {beats.length === 0 ? (
               <div className="no-song-placeholder">
                 <div className="icon">🎹</div>
-                <p>Load a song from the library<br />or upload a new score.</p>
+                <p>從曲庫載入歌曲<br />或上傳新樂譜。</p>
               </div>
             ) : isComplete ? (
               <div className="no-song-placeholder">
                 <div className="icon">🎉</div>
-                <p>Song complete!<br />
-                  {sessionAcc !== null && <span style={{ color: "var(--accent)" }}>Accuracy: {sessionAcc}%</span>}
+                <p>歌曲完成！<br />
+                  {sessionAcc !== null && <span style={{ color: "var(--accent)" }}>準確率：{sessionAcc}%</span>}
                 </p>
-                <button className="ctrl-btn active" style={{ marginTop: 8 }} onClick={restart}>Play Again ↺</button>
+                <button className="ctrl-btn active" style={{ marginTop: 8 }} onClick={restart}>再次播放 ↺</button>
               </div>
             ) : (
               <div className="note-display">
                 {mode !== "free" && (
                   <div className={`mode-badge mode-${mode}`}>
-                    {mode === "auto" ? "▶ Auto Play" : "🎯 Practice Mode"}
+                    {mode === "auto" ? "▶ 自動播放" : "🎯 練習模式"}
                   </div>
                 )}
 
@@ -604,7 +604,7 @@ export default function App() {
                 )}
 
                 <div className="next-note-area">
-                  <span className="next-label">NEXT</span>
+                  <span className="next-label">下一拍</span>
                   {nextBeat.length > 0
                     ? <NoteKeyBadge keys={nextBeat} size="small" />
                     : <span style={{ fontSize: 11, color: "var(--text-dim)" }}>—</span>
@@ -612,9 +612,9 @@ export default function App() {
                 </div>
 
                 <div className="stats-row">
-                  <div className="stat-chip"><div className="val">{beatIndex}</div><div className="lbl">Beat</div></div>
+                  <div className="stat-chip"><div className="val">{beatIndex}</div><div className="lbl">拍數</div></div>
                   <div className="stat-divider" />
-                  <div className="stat-chip"><div className="val">{beats.length}</div><div className="lbl">Total</div></div>
+                  <div className="stat-chip"><div className="val">{beats.length}</div><div className="lbl">總拍</div></div>
                   {sessionAcc !== null && (
                     <>
                       <div className="stat-divider" />
@@ -622,7 +622,7 @@ export default function App() {
                         <div className={`val ${sessionAcc >= 80 ? "accuracy-good" : sessionAcc >= 50 ? "accuracy-mid" : "accuracy-bad"}`}>
                           {sessionAcc}%
                         </div>
-                        <div className="lbl">Accuracy</div>
+                        <div className="lbl">準確率</div>
                       </div>
                     </>
                   )}

@@ -525,17 +525,19 @@ body {
   justify-items: center;
 }
 
-/* ===== NATURAL KEYS (round circles) ===== */
+/* ===== NATURAL KEYS (piano rectangle) ===== */
 .piano-key {
-  /* Size — scales with viewport height within keyboard area */
-  width:  clamp(32px, 5.5dvh, 68px);
-  height: clamp(32px, 5.5dvh, 68px);
-  border-radius: 50%;
+  /* Width narrower than height → portrait rectangle like real piano keys */
+  width:  clamp(28px, 4.8dvh, 62px);
+  height: clamp(40px, 7.5dvh, 88px);
+  border-radius: 6px 6px 4px 4px;
   border: 2px solid transparent;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* Label sits near the bottom, like real piano keys */
+  justify-content: flex-end;
+  padding-bottom: 5px;
   gap: 1px;
   cursor: pointer;
   font-family: 'SF Mono', 'Fira Code', monospace;
@@ -543,11 +545,11 @@ body {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   position: relative;
-  box-shadow: 0 2px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07);
+  box-shadow: 0 3px 0 rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
 .key-letter {
-  font-size: clamp(14px, 2.2dvh, 24px);
+  font-size: clamp(13px, 2dvh, 22px);
   font-weight: 800;
   line-height: 1;
 }
@@ -572,27 +574,30 @@ body {
   line-height: 0.8;
 }
 
-/* ===== SHARP KEYS (smaller circles) ===== */
+/* ===== SHARP KEYS (narrow dark rectangles, like black piano keys) ===== */
 .sharp-key {
-  width:  clamp(20px, 3.3dvh, 42px);
-  height: clamp(20px, 3.3dvh, 42px);
-  border-radius: 50%;
-  border: 2px solid transparent;
+  /* Narrower and shorter than natural keys */
+  width:  clamp(17px, 2.9dvh, 38px);
+  height: clamp(24px, 4.5dvh, 54px);
+  border-radius: 4px 4px 3px 3px;
+  border: 1px solid transparent;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
+  padding-bottom: 4px;
   gap: 0;
   cursor: pointer;
   font-family: 'SF Mono', 'Fira Code', monospace;
   transition: all 0.08s;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 2px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07);
+  box-shadow: 0 3px 0 rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.05);
 }
-.sharp-key.octave-high { background: #2a1a4a; border-color: #4a3080; color: #b090e4; }
-.sharp-key.octave-mid  { background: #0f2040; border-color: #1e4a6a; color: #80c8e4; }
-.sharp-key.octave-low  { background: #0f2818; border-color: #1e5035; color: #70d498; }
+/* Very dark backgrounds — like real black piano keys */
+.sharp-key.octave-high { background: #160b2e; border-color: #3a2565; color: #c0a0f0; }
+.sharp-key.octave-mid  { background: #081628; border-color: #183860; color: #90d0f8; }
+.sharp-key.octave-low  { background: #081410; border-color: #123525; color: #80e8b0; }
 
 .sharp-key:hover {
   filter: brightness(1.4);
