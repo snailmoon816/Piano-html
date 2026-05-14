@@ -561,16 +561,19 @@ body {
 .piano-octave {
   display: flex;
   flex-direction: row;
-  gap: 3px;
+  gap: clamp(2px, 0.5dvw, 6px);
   flex: 1;
   align-items: center;
-  justify-content: center;
+  justify-content: space-evenly;
+  min-height: 0;
 }
 
 /* ===== NATURAL KEYS (circle buttons) ===== */
 .piano-key {
-  width:  clamp(32px, 5.5dvh, 68px);
-  height: clamp(32px, 5.5dvh, 68px);
+  /* Height fills the row; aspect-ratio 1:1 keeps them perfectly circular */
+  height: 85%;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
   border-radius: 50%;
   border: 2px solid transparent;
   display: flex;
