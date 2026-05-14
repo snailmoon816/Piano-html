@@ -39,6 +39,34 @@ const JIANPU_NUM: Record<string, string> = {
   Z: "1", X: "2", C: "3", V: "4", B: "5", N: "6", M: "7",
 };
 
+// Sharp keys — 5 per octave; null = E–F gap (no sharp there)
+type SharpData = { label: string; freq: number; num: string };
+
+const HIGH_SHARPS: (SharpData | null)[] = [
+  { label: "Q#", freq: 1108.73, num: "1" },
+  { label: "W#", freq: 1244.51, num: "2" },
+  null,
+  { label: "R#", freq: 1479.98, num: "4" },
+  { label: "T#", freq: 1661.22, num: "5" },
+  { label: "Y#", freq: 1864.66, num: "6" },
+];
+const MID_SHARPS: (SharpData | null)[] = [
+  { label: "A#", freq: 554.37,  num: "1" },
+  { label: "S#", freq: 622.25,  num: "2" },
+  null,
+  { label: "F#", freq: 739.99,  num: "4" },
+  { label: "G#", freq: 830.61,  num: "5" },
+  { label: "H#", freq: 932.33,  num: "6" },
+];
+const LOW_SHARPS: (SharpData | null)[] = [
+  { label: "Z#", freq: 277.18,  num: "1" },
+  { label: "X#", freq: 311.13,  num: "2" },
+  null,
+  { label: "V#", freq: 369.99,  num: "4" },
+  { label: "B#", freq: 415.30,  num: "5" },
+  { label: "N#", freq: 466.16,  num: "6" },
+];
+
 // ===== AUDIO =====
 let audioCtx: AudioContext | null = null;
 
@@ -48,14 +76,11 @@ function getAudioCtx(): AudioContext {
   return audioCtx;
 }
 
-function playKey(key: string) {
-  if (key === "-") return;
-  const freq = KEY_FREQ[key];
-  if (!freq) return;
+function playFreq(freq: number, octave: "high" | "mid" | "low" = "mid") {
   const ctx = getAudioCtx();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
-  osc.type = KEY_OCTAVE[key] === "mid" ? "triangle" : "sine";
+  osc.type = octave === "mid" ? "triangle" : "sine";
   osc.frequency.value = freq;
   gain.gain.setValueAtTime(0.45, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.9);
@@ -63,6 +88,13 @@ function playKey(key: string) {
   gain.connect(ctx.destination);
   osc.start();
   osc.stop(ctx.currentTime + 0.9);
+}
+
+function playKey(key: string) {
+  if (key === "-") return;
+  const freq = KEY_FREQ[key];
+  if (!freq) return;
+  playFreq(freq, KEY_OCTAVE[key]);
 }
 
 function playBeat(beat: Beat) { beat.forEach((k) => playKey(k)); }
@@ -113,7 +145,7 @@ function fmtDate(iso: string | null): string {
 }
 
 // ===== PIANO KEY =====
-function PianoKey({ label, octave, highlighted, pressed, flashCorrect, flashWrong, onPress }: {
+function PianoKey({ label, octave, highlighted, pressed, flashCorrect, flashWrong, onPress, gridCol }: {
   label: string;
   octave: "high" | "mid" | "low";
   highlighted: boolean;
@@ -121,6 +153,7 @@ function PianoKey({ label, octave, highlighted, pressed, flashCorrect, flashWron
   flashCorrect: boolean;
   flashWrong: boolean;
   onPress: (key: string) => void;
+  gridCol?: number;
 }) {
   const cls = ["piano-key", `octave-${octave}`,
     highlighted ? "highlighted" : "",
@@ -130,9 +163,12 @@ function PianoKey({ label, octave, highlighted, pressed, flashCorrect, flashWron
   ].filter(Boolean).join(" ");
 
   const num = JIANPU_NUM[label];
+  const style = gridCol !== undefined
+    ? { gridRow: 2, gridColumn: `${gridCol} / span 4` }
+    : undefined;
 
   return (
-    <div className={cls} onPointerDown={(e) => { e.preventDefault(); onPress(label); }}>
+    <div className={cls} style={style} onPointerDown={(e) => { e.preventDefault(); onPress(label); }}>
       <span className="key-letter">{label}</span>
       <div className="jianpu-label">
         {octave === "high" && <span className="jianpu-dot">·</span>}
@@ -600,13 +636,28 @@ export default function App() {
       {/* ===== KEYBOARD — always bottom row ===== */}
       <div className="keyboard-area">
         {([
-          { keys: HIGH_KEYS, octave: "high" as const },
-          { keys: MID_KEYS,  octave: "mid"  as const },
-          { keys: LOW_KEYS,  octave: "low"  as const },
-        ]).map(({ keys, octave }) => (
-          <div key={octave} className="octave-row">
-            {keys.map((k) => (
+          { keys: HIGH_KEYS, sharps: HIGH_SHARPS, octave: "high" as const },
+          { keys: MID_KEYS,  sharps: MID_SHARPS,  octave: "mid"  as const },
+          { keys: LOW_KEYS,  sharps: LOW_SHARPS,  octave: "low"  as const },
+        ]).map(({ keys, sharps, octave }) => (
+          /* 28-column grid: naturals span 4 cols, sharps span 2 cols centered between naturals */
+          <div key={octave} className="piano-octave">
+            {/* Sharp keys — row 1 */}
+            {sharps.map((sharp, i) => sharp && (
+              <div
+                key={sharp.label}
+                className={`sharp-key octave-${octave}`}
+                style={{ gridRow: 1, gridColumn: `${(i + 1) * 4} / span 2` }}
+                onPointerDown={(e) => { e.preventDefault(); getAudioCtx(); playFreq(sharp.freq, octave); }}
+              >
+                <span className="sharp-num">{sharp.num}</span>
+                <span className="sharp-sym">♯</span>
+              </div>
+            ))}
+            {/* Natural keys — row 2 */}
+            {keys.map((k, i) => (
               <PianoKey key={k} label={k} octave={octave}
+                gridCol={i * 4 + 1}
                 highlighted={highlightedKeys.has(k)}
                 pressed={pressedKeys.has(k)}
                 flashCorrect={flashKeys.get(k) === "correct"}

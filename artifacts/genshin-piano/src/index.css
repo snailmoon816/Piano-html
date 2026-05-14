@@ -497,27 +497,39 @@ body {
 .keyboard-area {
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
-  padding: 8px 10px 10px;
+  padding: 6px 12px 8px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  flex-shrink: 0;
+  gap: 4px;
+  /* Fixed at 40% of viewport height */
+  flex: 0 0 40dvh;
+  overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
 }
 
-.octave-row {
-  display: flex;
-  gap: 5px;
+/*
+ * Piano octave: 28-column CSS grid
+ *   Natural keys  → span 4 cols each, placed in row 2
+ *   Sharp keys    → span 2 cols each, placed in row 1
+ *   Column maths ensure sharp centers fall exactly between adjacent naturals.
+ */
+.piano-octave {
+  display: grid;
+  grid-template-columns: repeat(28, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 3px;
+  row-gap: 3px;
+  flex: 1;
   align-items: center;
-  justify-content: center;
+  justify-items: center;
 }
 
-/* ===== ROUND PIANO KEYS ===== */
+/* ===== NATURAL KEYS (round circles) ===== */
 .piano-key {
-  flex: 1 1 0;
-  max-width: calc((100% - 6 * 5px) / 7);
-  aspect-ratio: 1;
+  /* Size — scales with viewport height within keyboard area */
+  width:  clamp(32px, 5.5dvh, 68px);
+  height: clamp(32px, 5.5dvh, 68px);
   border-radius: 50%;
   border: 2px solid transparent;
   display: flex;
@@ -535,7 +547,7 @@ body {
 }
 
 .key-letter {
-  font-size: 15px;
+  font-size: clamp(14px, 2.2dvh, 24px);
   font-weight: 800;
   line-height: 1;
 }
@@ -546,18 +558,61 @@ body {
   flex-direction: column;
   align-items: center;
   line-height: 1;
-  gap: 0px;
+  gap: 0;
 }
 .jianpu-num {
-  font-size: 9px;
+  font-size: clamp(7px, 1dvh, 11px);
   font-weight: 600;
   opacity: 0.65;
   line-height: 1;
 }
 .jianpu-dot {
-  font-size: 8px;
+  font-size: clamp(6px, 0.9dvh, 10px);
   opacity: 0.5;
   line-height: 0.8;
+}
+
+/* ===== SHARP KEYS (smaller circles) ===== */
+.sharp-key {
+  width:  clamp(20px, 3.3dvh, 42px);
+  height: clamp(20px, 3.3dvh, 42px);
+  border-radius: 50%;
+  border: 2px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  cursor: pointer;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  transition: all 0.08s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07);
+}
+.sharp-key.octave-high { background: #2a1a4a; border-color: #4a3080; color: #b090e4; }
+.sharp-key.octave-mid  { background: #0f2040; border-color: #1e4a6a; color: #80c8e4; }
+.sharp-key.octave-low  { background: #0f2818; border-color: #1e5035; color: #70d498; }
+
+.sharp-key:hover {
+  filter: brightness(1.4);
+  transform: scale(1.1);
+}
+.sharp-key:active {
+  filter: brightness(0.8);
+  transform: scale(0.92);
+}
+
+.sharp-num {
+  font-size: clamp(6px, 0.9dvh, 10px);
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.9;
+}
+.sharp-sym {
+  font-size: clamp(6px, 0.9dvh, 10px);
+  line-height: 0.9;
+  opacity: 0.7;
 }
 
 .piano-key.octave-high { background: var(--key-high-bg); border-color: #3a2560; color: var(--key-high); }
