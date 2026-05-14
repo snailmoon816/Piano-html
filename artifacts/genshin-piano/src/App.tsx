@@ -32,10 +32,11 @@ const KEY_OCTAVE: Record<string, "high" | "mid" | "low"> = {
   ...Object.fromEntries(LOW_KEYS.map((k)  => [k, "low"  as const])),
 };
 
-const NOTE_NAMES: Record<string, string> = {
-  Q: "C6", W: "D6", E: "E6", R: "F6", T: "G6", Y: "A6", U: "B6",
-  A: "C5", S: "D5", D: "E5", F: "F5", G: "G5", H: "A5", J: "B5",
-  Z: "C4", X: "D4", C: "E4", V: "F4", B: "G4", N: "A4", M: "B4",
+// Jianpu (簡譜) numbers 1-7 per key
+const JIANPU_NUM: Record<string, string> = {
+  Q: "1", W: "2", E: "3", R: "4", T: "5", Y: "6", U: "7",
+  A: "1", S: "2", D: "3", F: "4", G: "5", H: "6", J: "7",
+  Z: "1", X: "2", C: "3", V: "4", B: "5", N: "6", M: "7",
 };
 
 // ===== AUDIO =====
@@ -82,14 +83,12 @@ function loadSongs(): Song[] {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) return JSON.parse(raw);
-    // migrate old data
     const old = localStorage.getItem("genshin_piano_songs");
     if (old) {
-      const songs: Song[] = JSON.parse(old).map((s: Song & { playCount?: number }) => ({
+      return JSON.parse(old).map((s: Song & { playCount?: number }) => ({
         ...s,
         completedCount: s.completedCount ?? s.playCount ?? 0,
       }));
-      return songs;
     }
     return [];
   } catch { return []; }
@@ -113,7 +112,7 @@ function fmtDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-// ===== PIANO KEY COMPONENT =====
+// ===== PIANO KEY =====
 function PianoKey({ label, octave, highlighted, pressed, flashCorrect, flashWrong, onPress }: {
   label: string;
   octave: "high" | "mid" | "low";
@@ -125,15 +124,21 @@ function PianoKey({ label, octave, highlighted, pressed, flashCorrect, flashWron
 }) {
   const cls = ["piano-key", `octave-${octave}`,
     highlighted ? "highlighted" : "",
-    pressed     ? "pressed"     : "",
+    pressed      ? "pressed"     : "",
     flashCorrect && !flashWrong ? "correct-flash" : "",
-    flashWrong  ? "wrong-flash" : "",
+    flashWrong   ? "wrong-flash" : "",
   ].filter(Boolean).join(" ");
+
+  const num = JIANPU_NUM[label];
 
   return (
     <div className={cls} onPointerDown={(e) => { e.preventDefault(); onPress(label); }}>
-      {label}
-      <span className="piano-key-label">{NOTE_NAMES[label]}</span>
+      <span className="key-letter">{label}</span>
+      <div className="jianpu-label">
+        {octave === "high" && <span className="jianpu-dot">·</span>}
+        <span className="jianpu-num">{num}</span>
+        {octave === "low" && <span className="jianpu-dot">·</span>}
+      </div>
     </div>
   );
 }
@@ -150,7 +155,7 @@ function NoteKeyBadge({ keys, size }: { keys: string[]; size: "big" | "small" })
       <div className="current-note">
         {keys.map((k) => (
           <div key={k} className={`note-key-badge octave-${KEY_OCTAVE[k]}`}>
-            {k}<span className="note-label">{NOTE_NAMES[k]}</span>
+            {k}<span className="note-label">{JIANPU_NUM[k]}</span>
           </div>
         ))}
       </div>
@@ -222,103 +227,56 @@ export default function App() {
   const [beatIndex, setBeatIndex] = useState(0);
   const [mode, setMode] = useState<Mode>("free");
   const [bpm, setBpm] = useState(80);
+  const [libraryOpen, setLibraryOpen] = useState(true);
 
-  // Key flash/press state
   const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
   const [flashKeys, setFlashKeys] = useState<Map<string, "correct" | "wrong">>(new Map());
-
-  // Practice mode: keys still needed for current beat chord
   const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set());
-
-  // Session stats
   const [sessionHits, setSessionHits] = useState(0);
   const [sessionAttempts, setSessionAttempts] = useState(0);
-
   const [showUpload, setShowUpload] = useState(false);
 
-  const intervalRef   = useRef<ReturnType<typeof setInterval> | null>(null);
-  const beatIndexRef  = useRef(0);
-  const beatsRef      = useRef<Beat[]>([]);
-  const modeRef       = useRef<Mode>("free");
-  const pendingRef    = useRef<Set<string>>(new Set());
-  const scoreRef      = useRef<HTMLDivElement>(null);
+  const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const beatIndexRef = useRef(0);
+  const beatsRef     = useRef<Beat[]>([]);
+  const modeRef      = useRef<Mode>("free");
+  const pendingRef   = useRef<Set<string>>(new Set());
+  const scoreRef     = useRef<HTMLDivElement>(null);
 
-  // Keep refs in sync
   useEffect(() => { beatIndexRef.current = beatIndex; }, [beatIndex]);
   useEffect(() => { beatsRef.current = beats; }, [beats]);
   useEffect(() => { modeRef.current = mode; }, [mode]);
   useEffect(() => { pendingRef.current = pendingKeys; }, [pendingKeys]);
-
-  // Persist songs
   useEffect(() => { saveSongs(songs); }, [songs]);
 
-  // Scroll score to current beat
   useEffect(() => {
     const el = scoreRef.current?.querySelector(".beat-token.current") as HTMLElement | null;
     el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   }, [beatIndex]);
 
-  // Update highlighted keys (keys required for current beat)
-  const highlightedKeys = new Set(
-    (beats[beatIndex] ?? []).filter((k) => k !== "-")
-  );
+  const highlightedKeys = new Set((beats[beatIndex] ?? []).filter((k) => k !== "-"));
 
   // ===== BEAT ADVANCEMENT =====
-  // Advance beat index, skipping rests automatically (with brief sound cue)
   const advanceBeat = useCallback((fromIndex: number, currentBeats: Beat[], onDone: (newIdx: number) => void) => {
     let next = fromIndex + 1;
-    // Auto-skip rests
-    while (next < currentBeats.length && currentBeats[next]?.[0] === "-") {
-      next++;
-    }
+    while (next < currentBeats.length && currentBeats[next]?.[0] === "-") next++;
     onDone(next);
   }, []);
 
-  // Called when a beat is fully completed in practice mode
-  const completeBeat = useCallback((beatIdx: number) => {
-    const currentBeats = beatsRef.current;
-    setSessionHits((h) => h + 1);
-    setSessionAttempts((a) => a + 1);
-    advanceBeat(beatIdx, currentBeats, (newIdx) => {
-      setBeatIndex(newIdx);
-      beatIndexRef.current = newIdx;
-      if (newIdx >= currentBeats.length) {
-        // Song complete!
-        onSongComplete();
-      } else {
-        // Set pending keys for next beat
-        const next = currentBeats[newIdx] ?? [];
-        setPendingKeys(new Set(next.filter((k) => k !== "-")));
-      }
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [advanceBeat]);
-
   const onSongComplete = useCallback(() => {
-    setMode("free");
-    modeRef.current = "free";
+    setMode("free"); modeRef.current = "free";
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
-    // Only now increment completedCount
     setActiveSongId((id) => {
-      if (id) {
-        setSongs((prev) => prev.map((s) => s.id === id
-          ? { ...s, completedCount: s.completedCount + 1, lastPlayed: new Date().toISOString() }
-          : s
-        ));
-      }
+      if (id) setSongs((prev) => prev.map((s) => s.id === id
+        ? { ...s, completedCount: s.completedCount + 1, lastPlayed: new Date().toISOString() } : s));
       return id;
     });
-    // Save accuracy
     setSessionHits((hits) => {
       setSessionAttempts((attempts) => {
         if (attempts > 0) {
           setActiveSongId((id) => {
-            if (id) {
-              setSongs((prev) => prev.map((s) => s.id === id
-                ? { ...s, totalHits: s.totalHits + hits, totalAttempts: s.totalAttempts + attempts }
-                : s
-              ));
-            }
+            if (id) setSongs((prev) => prev.map((s) => s.id === id
+              ? { ...s, totalHits: s.totalHits + hits, totalAttempts: s.totalAttempts + attempts } : s));
             return id;
           });
         }
@@ -328,20 +286,37 @@ export default function App() {
     });
   }, []);
 
-  // ===== KEYBOARD HANDLER =====
+  const completeBeat = useCallback((beatIdx: number) => {
+    const currentBeats = beatsRef.current;
+    setSessionHits((h) => h + 1);
+    setSessionAttempts((a) => a + 1);
+    advanceBeat(beatIdx, currentBeats, (newIdx) => {
+      setBeatIndex(newIdx); beatIndexRef.current = newIdx;
+      if (newIdx >= currentBeats.length) {
+        onSongComplete();
+      } else {
+        const next = currentBeats[newIdx] ?? [];
+        const np = new Set(next.filter((k) => k !== "-"));
+        setPendingKeys(np); pendingRef.current = np;
+      }
+    });
+  }, [advanceBeat, onSongComplete]);
+
+  // ===== FLASH HELPER =====
   const doFlashKey = useCallback((key: string, type: "correct" | "wrong") => {
     setFlashKeys((prev) => new Map([...prev, [key, type]]));
     setTimeout(() => setFlashKeys((prev) => { const n = new Map(prev); n.delete(key); return n; }), 200);
   }, []);
 
+  // ===== KEY PRESS HANDLER =====
   const handlePianoKey = useCallback((key: string) => {
     getAudioCtx();
     playKey(key);
     doFlashKey(key, "correct");
 
-    const currentMode = modeRef.current;
-    const currentBeats = beatsRef.current;
-    const currentIdx = beatIndexRef.current;
+    const currentMode   = modeRef.current;
+    const currentBeats  = beatsRef.current;
+    const currentIdx    = beatIndexRef.current;
 
     if (currentMode !== "practice" || currentBeats.length === 0) return;
     if (currentIdx >= currentBeats.length) return;
@@ -350,24 +325,17 @@ export default function App() {
     if (!beat || beat[0] === "-") return;
 
     const pending = new Set(pendingRef.current);
-
     if (pending.has(key)) {
-      // Correct key!
       pending.delete(key);
-      setPendingKeys(new Set(pending));
-      pendingRef.current = new Set(pending);
-      if (pending.size === 0) {
-        // All chord keys pressed — advance
-        completeBeat(currentIdx);
-      }
+      setPendingKeys(new Set(pending)); pendingRef.current = new Set(pending);
+      if (pending.size === 0) completeBeat(currentIdx);
     } else {
-      // Wrong key
       doFlashKey(key, "wrong");
       setSessionAttempts((a) => a + 1);
     }
   }, [doFlashKey, completeBeat]);
 
-  // Global keyboard events
+  // ===== KEYBOARD EVENTS =====
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return;
@@ -386,92 +354,68 @@ export default function App() {
     return () => { window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); };
   }, [handlePianoKey]);
 
-  // ===== MODES =====
+  // ===== SONG / MODE CONTROLS =====
   function loadSong(song: Song) {
     stopAll();
     const parsed = parseScore(song.content);
-    setBeats(parsed);
-    beatsRef.current = parsed;
-    setBeatIndex(0);
-    beatIndexRef.current = 0;
+    setBeats(parsed); beatsRef.current = parsed;
+    setBeatIndex(0); beatIndexRef.current = 0;
     setActiveSongId(song.id);
-    setSessionHits(0);
-    setSessionAttempts(0);
+    setSessionHits(0); setSessionAttempts(0);
     setPendingKeys(new Set());
-    // Do NOT increment completedCount here — only on full completion
   }
 
   function stopAll() {
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
-    setMode("free");
-    modeRef.current = "free";
+    setMode("free"); modeRef.current = "free";
   }
 
   function startAutoPlay() {
     if (beats.length === 0) return;
-    stopAll();
-    setMode("auto");
-    modeRef.current = "auto";
+    stopAll(); setMode("auto"); modeRef.current = "auto";
     getAudioCtx();
     const ms = Math.round(60000 / bpm);
-
     intervalRef.current = setInterval(() => {
       const idx = beatIndexRef.current;
       const currentBeats = beatsRef.current;
-      if (idx >= currentBeats.length) {
-        stopAll();
-        onSongComplete();
-        return;
-      }
+      if (idx >= currentBeats.length) { stopAll(); onSongComplete(); return; }
       playBeat(currentBeats[idx]);
       const next = idx + 1;
-      setBeatIndex(next);
-      beatIndexRef.current = next;
+      setBeatIndex(next); beatIndexRef.current = next;
     }, ms);
   }
 
   function startPractice() {
     if (beats.length === 0) return;
     stopAll();
-
-    // Find first non-rest beat
     let startIdx = beatIndex;
     while (startIdx < beats.length && beats[startIdx]?.[0] === "-") startIdx++;
     if (startIdx >= beats.length) { setBeatIndex(0); startIdx = 0; }
-
-    setBeatIndex(startIdx);
-    beatIndexRef.current = startIdx;
+    setBeatIndex(startIdx); beatIndexRef.current = startIdx;
     const firstBeat = beats[startIdx] ?? [];
-    setPendingKeys(new Set(firstBeat.filter((k) => k !== "-")));
-    pendingRef.current = new Set(firstBeat.filter((k) => k !== "-"));
-
-    setMode("practice");
-    modeRef.current = "practice";
+    const fp = new Set(firstBeat.filter((k) => k !== "-"));
+    setPendingKeys(fp); pendingRef.current = fp;
+    setMode("practice"); modeRef.current = "practice";
     getAudioCtx();
   }
 
   function restart() {
-    stopAll();
-    setBeatIndex(0);
-    beatIndexRef.current = 0;
-    setSessionHits(0);
-    setSessionAttempts(0);
-    setPendingKeys(new Set());
+    stopAll(); setBeatIndex(0); beatIndexRef.current = 0;
+    setSessionHits(0); setSessionAttempts(0); setPendingKeys(new Set());
   }
 
   function stepForward() {
-    if (beats.length === 0) return;
+    if (beats.length === 0 || mode !== "free") return;
     const beat = beats[beatIndex];
     if (beat) playBeat(beat);
     const next = Math.min(beatIndex + 1, beats.length);
-    setBeatIndex(next);
-    beatIndexRef.current = next;
+    setBeatIndex(next); beatIndexRef.current = next;
   }
 
   function stepBack() {
+    if (mode !== "free") return;
     const prev = Math.max(beatIndex - 1, 0);
-    setBeatIndex(prev);
-    beatIndexRef.current = prev;
+    setBeatIndex(prev); beatIndexRef.current = prev;
   }
 
   function deleteSong(id: string, e: React.MouseEvent) {
@@ -480,183 +424,178 @@ export default function App() {
     if (activeSongId === id) { setActiveSongId(null); setBeats([]); setBeatIndex(0); stopAll(); }
   }
 
-  function saveSong(name: string, content: string) {
-    setSongs((prev) => [...prev, makeSong(name, content)]);
-  }
-
-  // ===== DERIVED STATE =====
-  const activeSong   = songs.find((s) => s.id === activeSongId) ?? null;
+  // ===== DERIVED =====
+  const activeSong    = songs.find((s) => s.id === activeSongId) ?? null;
   const currentBeat: Beat = beats[beatIndex] ?? [];
   const nextBeat: Beat    = beats[beatIndex + 1] ?? [];
-  const progress = beats.length > 0 ? Math.min(beatIndex / beats.length, 1) : 0;
-  const isComplete = beats.length > 0 && beatIndex >= beats.length;
-  const sessionAcc = sessionAttempts > 0 ? Math.round((sessionHits / sessionAttempts) * 100) : null;
+  const progress          = beats.length > 0 ? Math.min(beatIndex / beats.length, 1) : 0;
+  const isComplete        = beats.length > 0 && beatIndex >= beats.length;
+  const sessionAcc        = sessionAttempts > 0 ? Math.round((sessionHits / sessionAttempts) * 100) : null;
 
   return (
     <div className="app">
-      {/* ===== LIBRARY ===== */}
-      <aside className="library">
-        <div className="library-header">
-          <h2>Songs</h2>
-          <button className="upload-btn" onClick={() => setShowUpload(true)}>+ Upload</button>
-        </div>
-        <div className="song-list">
-          {songs.length === 0 && (
-            <div className="library-empty">
-              <p>🎵</p>
-              <p>No songs yet.<br />Upload a .txt score to start.</p>
-            </div>
-          )}
-          {songs.map((song) => {
-            const acc = calcAccuracy(song);
-            return (
-              <div key={song.id} className={`song-item${activeSongId === song.id ? " active" : ""}`} onClick={() => loadSong(song)}>
-                <div className="song-item-body">
-                  <div className="song-name">{song.name}</div>
-                  <div className="song-meta">
-                    <span className="song-stat">✓ <span>{song.completedCount}</span></span>
-                    {acc !== null && <span className="song-stat">🎯 <span>{acc}%</span></span>}
-                    <span className="song-stat">🕐 <span>{fmtDate(song.lastPlayed)}</span></span>
-                  </div>
-                </div>
-                <button className="song-delete" onClick={(e) => deleteSong(song.id, e)}>✕</button>
+      {/* TOP ROW: library + practice */}
+      <div className="app-top">
+
+        {/* ===== LIBRARY ===== */}
+        <aside className={`library${libraryOpen ? "" : " collapsed"}`}>
+          <div className="library-header">
+            <h2>Songs</h2>
+            <button className="upload-btn" onClick={() => setShowUpload(true)}>+ Upload</button>
+          </div>
+          <div className="song-list">
+            {songs.length === 0 && (
+              <div className="library-empty">
+                <p>🎵</p>
+                <p>No songs yet.<br />Upload a .txt score to start.</p>
               </div>
-            );
-          })}
-        </div>
-      </aside>
-
-      {/* ===== PRACTICE PANEL ===== */}
-      <main className="practice">
-        <div className="practice-header">
-          <div className={`song-title-display${activeSong ? "" : " placeholder"}`}>
-            {activeSong ? activeSong.name : "No song loaded"}
-          </div>
-          <div className="controls">
-            <div className="bpm-control">
-              <span>BPM</span>
-              <input type="number" className="bpm-input" value={bpm} min={20} max={300}
-                onChange={(e) => { setBpm(Number(e.target.value)); if (mode === "auto") stopAll(); }} />
-            </div>
-            <button className="ctrl-btn" onClick={stepBack} disabled={beatIndex === 0 || mode !== "free"}>◀</button>
-            <button className="ctrl-btn" onClick={stepForward} disabled={beatIndex >= beats.length || mode !== "free"}>▶</button>
-            <button className="ctrl-btn" onClick={restart} disabled={beats.length === 0}>↺</button>
-
-            {mode === "auto"
-              ? <button className="ctrl-btn danger" onClick={stopAll}>■ Stop</button>
-              : <button className="ctrl-btn active" onClick={startAutoPlay} disabled={beats.length === 0}>▶ Auto</button>
-            }
-            {mode === "practice"
-              ? <button className="ctrl-btn danger" onClick={stopAll}>■ Stop</button>
-              : <button className={`ctrl-btn${mode === "free" ? " practice-btn" : ""}`} onClick={startPractice} disabled={beats.length === 0}>🎯 Practice</button>
-            }
-          </div>
-        </div>
-
-        {/* Progress bar */}
-        {beats.length > 0 && (
-          <div className="progress-bar-track">
-            <div className="progress-bar-fill" style={{ width: `${progress * 100}%` }} />
-            <span className="progress-label">{beatIndex} / {beats.length}</span>
-          </div>
-        )}
-
-        {/* Score preview */}
-        {beats.length > 0 && (
-          <div className="score-preview" ref={scoreRef}>
-            {beats.map((beat, i) => {
-              const isPast    = i < beatIndex;
-              const isCurrent = i === beatIndex;
-              const isRest    = beat[0] === "-";
+            )}
+            {songs.map((song) => {
+              const acc = calcAccuracy(song);
               return (
-                <span
-                  key={i}
-                  className={["beat-token", isPast ? "past" : "", isCurrent ? "current" : "", isRest ? "rest" : ""].filter(Boolean).join(" ")}
-                  style={{ minWidth: beat.length > 1 ? `${beat.length * 14 + 8}px` : undefined }}
-                  onClick={() => { if (mode === "free") { setBeatIndex(i); beatIndexRef.current = i; } }}
-                >
-                  {isRest ? "—" : beat.join("")}
-                </span>
+                <div key={song.id} className={`song-item${activeSongId === song.id ? " active" : ""}`} onClick={() => loadSong(song)}>
+                  <div className="song-item-body">
+                    <div className="song-name">{song.name}</div>
+                    <div className="song-meta">
+                      <span className="song-stat">✓ <span>{song.completedCount}</span></span>
+                      {acc !== null && <span className="song-stat">🎯 <span>{acc}%</span></span>}
+                      <span className="song-stat">🕐 <span>{fmtDate(song.lastPlayed)}</span></span>
+                    </div>
+                  </div>
+                  <button className="song-delete" onClick={(e) => deleteSong(song.id, e)}>✕</button>
+                </div>
               );
             })}
           </div>
-        )}
+        </aside>
 
-        {/* Main display */}
-        <div className="practice-main">
-          {beats.length === 0 ? (
-            <div className="no-song-placeholder">
-              <div className="icon">🎹</div>
-              <p>Load a song from the library<br />or upload a new score.</p>
-            </div>
-          ) : isComplete ? (
-            <div className="no-song-placeholder">
-              <div className="icon">🎉</div>
-              <p>Song complete!<br />
-                {sessionAcc !== null && <span style={{ color: "var(--accent)" }}>Accuracy: {sessionAcc}%</span>}
-              </p>
-              <button className="ctrl-btn active" style={{ marginTop: 8 }} onClick={restart}>Play Again ↺</button>
-            </div>
-          ) : (
-            <div className="note-display">
-              {/* Mode badge */}
-              {mode !== "free" && (
-                <div className={`mode-badge mode-${mode}`}>
-                  {mode === "auto" ? "▶ Auto Play" : "🎯 Practice Mode"}
-                </div>
-              )}
+        {/* ===== PRACTICE ===== */}
+        <main className="practice">
+          <div className="practice-header">
+            {/* Library toggle */}
+            <button
+              className="lib-toggle"
+              onClick={() => setLibraryOpen((o) => !o)}
+              title={libraryOpen ? "Collapse library" : "Expand library"}
+            >
+              {libraryOpen ? "◀" : "▶"}
+            </button>
 
-              {/* Current beat */}
-              {currentBeat[0] === "-"
-                ? <div className="note-key-badge rest-badge">—</div>
-                : <NoteKeyBadge keys={currentBeat} size="big" />
+            <div className={`song-title-display${activeSong ? "" : " placeholder"}`}>
+              {activeSong ? activeSong.name : "No song loaded"}
+            </div>
+
+            <div className="controls">
+              <div className="bpm-control">
+                <span>BPM</span>
+                <input type="number" className="bpm-input" value={bpm} min={20} max={300}
+                  onChange={(e) => { setBpm(Number(e.target.value)); if (mode === "auto") stopAll(); }} />
+              </div>
+              <button className="ctrl-btn" onClick={stepBack}    disabled={beatIndex === 0 || mode !== "free"}>◀</button>
+              <button className="ctrl-btn" onClick={stepForward} disabled={beatIndex >= beats.length || mode !== "free"}>▶</button>
+              <button className="ctrl-btn" onClick={restart}     disabled={beats.length === 0}>↺</button>
+              {mode === "auto"
+                ? <button className="ctrl-btn danger" onClick={stopAll}>■ Stop</button>
+                : <button className="ctrl-btn active" onClick={startAutoPlay} disabled={beats.length === 0}>▶ Auto</button>
               }
+              {mode === "practice"
+                ? <button className="ctrl-btn danger" onClick={stopAll}>■ Stop</button>
+                : <button className={`ctrl-btn${mode === "free" ? " practice-btn" : ""}`} onClick={startPractice} disabled={beats.length === 0}>🎯 Practice</button>
+              }
+            </div>
+          </div>
 
-              {/* Practice pending indicator */}
-              {mode === "practice" && currentBeat[0] !== "-" && currentBeat.length > 1 && (
-                <div className="chord-progress">
-                  {currentBeat.map((k) => (
-                    <div key={k} className={`chord-key-indicator ${pendingKeys.has(k) ? "pending" : "done"}`}>{k}</div>
-                  ))}
-                </div>
-              )}
-
-              {/* Next beat */}
-              <div className="next-note-area">
-                <span className="next-label">NEXT</span>
-                {nextBeat.length > 0
-                  ? <NoteKeyBadge keys={nextBeat} size="small" />
-                  : <span style={{ fontSize: 11, color: "var(--text-dim)" }}>—</span>
-                }
-              </div>
-
-              {/* Stats row */}
-              <div className="stats-row">
-                <div className="stat-chip">
-                  <div className="val">{beatIndex}</div>
-                  <div className="lbl">Beat</div>
-                </div>
-                <div className="stat-divider" />
-                <div className="stat-chip">
-                  <div className="val">{beats.length}</div>
-                  <div className="lbl">Total</div>
-                </div>
-                {sessionAcc !== null && (
-                  <>
-                    <div className="stat-divider" />
-                    <div className="stat-chip">
-                      <div className={`val ${sessionAcc >= 80 ? "accuracy-good" : sessionAcc >= 50 ? "accuracy-mid" : "accuracy-bad"}`}>
-                        {sessionAcc}%
-                      </div>
-                      <div className="lbl">Accuracy</div>
-                    </div>
-                  </>
-                )}
-              </div>
+          {/* Progress bar */}
+          {beats.length > 0 && (
+            <div className="progress-bar-track">
+              <div className="progress-bar-fill" style={{ width: `${progress * 100}%` }} />
+              <span className="progress-label">{beatIndex} / {beats.length}</span>
             </div>
           )}
-        </div>
-      </main>
+
+          {/* Score preview */}
+          {beats.length > 0 && (
+            <div className="score-preview" ref={scoreRef}>
+              {beats.map((beat, i) => {
+                const isPast = i < beatIndex, isCurrent = i === beatIndex, isRest = beat[0] === "-";
+                return (
+                  <span key={i}
+                    className={["beat-token", isPast ? "past" : "", isCurrent ? "current" : "", isRest ? "rest" : ""].filter(Boolean).join(" ")}
+                    style={{ minWidth: beat.length > 1 ? `${beat.length * 14 + 8}px` : undefined }}
+                    onClick={() => { if (mode === "free") { setBeatIndex(i); beatIndexRef.current = i; } }}
+                  >
+                    {isRest ? "—" : beat.join("")}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Main display */}
+          <div className="practice-main">
+            {beats.length === 0 ? (
+              <div className="no-song-placeholder">
+                <div className="icon">🎹</div>
+                <p>Load a song from the library<br />or upload a new score.</p>
+              </div>
+            ) : isComplete ? (
+              <div className="no-song-placeholder">
+                <div className="icon">🎉</div>
+                <p>Song complete!<br />
+                  {sessionAcc !== null && <span style={{ color: "var(--accent)" }}>Accuracy: {sessionAcc}%</span>}
+                </p>
+                <button className="ctrl-btn active" style={{ marginTop: 8 }} onClick={restart}>Play Again ↺</button>
+              </div>
+            ) : (
+              <div className="note-display">
+                {mode !== "free" && (
+                  <div className={`mode-badge mode-${mode}`}>
+                    {mode === "auto" ? "▶ Auto Play" : "🎯 Practice Mode"}
+                  </div>
+                )}
+
+                {currentBeat[0] === "-"
+                  ? <div className="note-key-badge rest-badge">—</div>
+                  : <NoteKeyBadge keys={currentBeat} size="big" />
+                }
+
+                {mode === "practice" && currentBeat[0] !== "-" && currentBeat.length > 1 && (
+                  <div className="chord-progress">
+                    {currentBeat.map((k) => (
+                      <div key={k} className={`chord-key-indicator ${pendingKeys.has(k) ? "pending" : "done"}`}>{k}</div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="next-note-area">
+                  <span className="next-label">NEXT</span>
+                  {nextBeat.length > 0
+                    ? <NoteKeyBadge keys={nextBeat} size="small" />
+                    : <span style={{ fontSize: 11, color: "var(--text-dim)" }}>—</span>
+                  }
+                </div>
+
+                <div className="stats-row">
+                  <div className="stat-chip"><div className="val">{beatIndex}</div><div className="lbl">Beat</div></div>
+                  <div className="stat-divider" />
+                  <div className="stat-chip"><div className="val">{beats.length}</div><div className="lbl">Total</div></div>
+                  {sessionAcc !== null && (
+                    <>
+                      <div className="stat-divider" />
+                      <div className="stat-chip">
+                        <div className={`val ${sessionAcc >= 80 ? "accuracy-good" : sessionAcc >= 50 ? "accuracy-mid" : "accuracy-bad"}`}>
+                          {sessionAcc}%
+                        </div>
+                        <div className="lbl">Accuracy</div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>{/* end app-top */}
 
       {/* ===== KEYBOARD — always bottom row ===== */}
       <div className="keyboard-area">
@@ -667,10 +606,7 @@ export default function App() {
         ]).map(({ keys, octave }) => (
           <div key={octave} className="octave-row">
             {keys.map((k) => (
-              <PianoKey
-                key={k}
-                label={k}
-                octave={octave}
+              <PianoKey key={k} label={k} octave={octave}
                 highlighted={highlightedKeys.has(k)}
                 pressed={pressedKeys.has(k)}
                 flashCorrect={flashKeys.get(k) === "correct"}
@@ -689,7 +625,7 @@ export default function App() {
         ))}
       </div>
 
-      {showUpload && <UploadModal onClose={() => setShowUpload(false)} onSave={saveSong} />}
+      {showUpload && <UploadModal onClose={() => setShowUpload(false)} onSave={(name, content) => setSongs((prev) => [...prev, makeSong(name, content)])} />}
     </div>
   );
 }
