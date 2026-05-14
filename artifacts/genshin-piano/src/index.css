@@ -680,19 +680,67 @@ body {
 }
 
 /* ===== RESPONSIVE ===== */
+
+/*
+ * KEY CIRCLE HELPER
+ * Desktop: key size is height-driven (85% of row height) → always square because row is tall enough.
+ * Narrow screens: width per key < height per key → keys go oval.
+ * Fix: override with explicit width-based size using min() so keys are always the smaller dimension.
+ *
+ * Formula: available width for 7 keys
+ *   = 100vw − keyboard-area-padding(24px) − area-gap(8px) − shift-col(≈50px) − 6×gap(≈12px)
+ *   ≈ 100vw − 94px    → per key ≈ (100vw − 94px) / 7
+ * We expose this as a single CSS var and apply it below.
+ */
+
 /* Compact landscape (short screens) */
 @media (max-height: 520px) and (orientation: landscape) {
   :root { --lib-width: 160px; }
   .keyboard-area { padding: 5px 8px 8px; gap: 4px; }
-  .piano-key { max-width: calc((100% - 6 * 4px) / 7); }
   .key-letter { font-size: 12px; }
   .jianpu-num { font-size: 8px; }
   .note-key-badge { width: 56px; height: 56px; font-size: 28px; }
   .practice-main { padding: 6px; gap: 5px; }
   .practice-header { padding: 6px 10px; }
+
+  /* Landscape: height is short, so clamp key size to row height */
+  .piano-key {
+    height: min(85%, calc((100vw - 94px - 6 * 3px) / 7));
+    width:  min(85%, calc((100vw - 94px - 6 * 3px) / 7));
+    aspect-ratio: unset;
+  }
 }
 
-/* Mobile portrait */
+/* Mobile portrait (narrow screens ≤ 600px) */
+@media (max-width: 600px) {
+  /* Compact shift button so it wastes less horizontal space */
+  .shift-toggle-btn {
+    width:  clamp(32px, 5dvh, 48px);
+    height: clamp(32px, 5dvh, 48px);
+  }
+  .shift-icon  { font-size: 12px; }
+  .shift-label { font-size: 7px; }
+  .shift-key   { display: none; } /* hide "Shift" hint text on mobile */
+
+  .piano-octave { gap: 2px; }
+
+  /*
+   * Width-driven key size: exactly square = perfectly circular.
+   * Available ≈ 100vw − 24px padding − 8px gap − 44px shift − 6×2px gaps = 100vw − 88px
+   */
+  .piano-key {
+    width:  calc((100vw - 88px - 6 * 2px) / 7);
+    height: calc((100vw - 88px - 6 * 2px) / 7);
+    aspect-ratio: unset;
+    flex: 0 0 auto;
+  }
+
+  .key-letter { font-size: clamp(11px, 3.5vw, 16px); }
+  .jianpu-num { font-size: clamp(6px, 2vw, 9px); }
+  .controls { gap: 3px; }
+}
+
+/* Mobile portrait layout (stack library below practice) */
 @media (max-width: 480px) {
   .app-top { flex-direction: column-reverse; }
   .library {
@@ -704,9 +752,6 @@ body {
   .library.collapsed { max-height: 0; width: 100% !important; }
   .song-list { min-width: unset; }
   .library-empty { min-width: unset; }
-  .piano-key { max-width: calc((100% - 6 * 4px) / 7); }
-  .key-letter { font-size: 12px; }
-  .controls { gap: 3px; }
 }
 
 /* ===== MODAL ===== */
