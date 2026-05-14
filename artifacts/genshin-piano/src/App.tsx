@@ -205,7 +205,10 @@ function playKey(key: string) {
   playFreq(freq, KEY_OCTAVE[key]);
 }
 
-function playBeat(beat: Beat) { beat.forEach((k) => playKey(k)); }
+function playBeat(beat: Beat) {
+  if (beat[0] === "-") return; // rest — produce silence, play nothing
+  beat.forEach((k) => playKey(k));
+}
 
 // ===== SCORE PARSER =====
 function parseScore(content: string): Beat[] {
@@ -367,6 +370,8 @@ export default function App() {
   const [beatIndex, setBeatIndex] = useState(0);
   const [mode, setMode] = useState<Mode>("free");
   const [bpm, setBpm] = useState(80);
+  const bpmRef = useRef(80);
+  useEffect(() => { bpmRef.current = bpm; }, [bpm]);
   const [libraryOpen, setLibraryOpen] = useState(true);
 
   const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
@@ -402,10 +407,16 @@ export default function App() {
   const highlightedKeys = new Set((beats[beatIndex] ?? []).filter((k) => k !== "-"));
 
   // ===== BEAT ADVANCEMENT =====
-  const advanceBeat = useCallback((fromIndex: number, currentBeats: Beat[], onDone: (newIdx: number) => void) => {
+  const advanceBeat = useCallback((fromIndex: number, currentBeats: Beat[], msPerBeat: number, onDone: (newIdx: number) => void) => {
     let next = fromIndex + 1;
-    while (next < currentBeats.length && currentBeats[next]?.[0] === "-") next++;
-    onDone(next);
+    let restCount = 0;
+    while (next < currentBeats.length && currentBeats[next]?.[0] === "-") { next++; restCount++; }
+    if (restCount > 0) {
+      // Pause for the rest beats before revealing the next note
+      setTimeout(() => onDone(next), restCount * msPerBeat);
+    } else {
+      onDone(next);
+    }
   }, []);
 
   const onSongComplete = useCallback(() => {
@@ -435,7 +446,7 @@ export default function App() {
     const currentBeats = beatsRef.current;
     setSessionHits((h) => h + 1);
     setSessionAttempts((a) => a + 1);
-    advanceBeat(beatIdx, currentBeats, (newIdx) => {
+    advanceBeat(beatIdx, currentBeats, Math.round(60000 / bpmRef.current), (newIdx) => {
       setBeatIndex(newIdx); beatIndexRef.current = newIdx;
       if (newIdx >= currentBeats.length) {
         onSongComplete();
