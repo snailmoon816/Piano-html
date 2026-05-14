@@ -41,24 +41,29 @@ body {
 }
 
 /* ===== LAYOUT ===== */
+/* Keyboard is ALWAYS the bottom row at all breakpoints */
 .app {
   display: grid;
   grid-template-areas:
     "library practice"
     "keyboard keyboard";
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 220px 1fr;
   grid-template-rows: 1fr auto;
   height: 100dvh;
   overflow: hidden;
 }
 
-@media (max-width: 700px), (max-height: 500px) and (orientation: landscape) {
+/* Compact landscape: shrink library but keep 2-row structure */
+@media (max-height: 520px) and (orientation: landscape) {
   .app {
-    grid-template-areas:
-      "library practice keyboard";
-    grid-template-columns: 180px 1fr auto;
-    grid-template-rows: 100dvh;
+    grid-template-columns: 160px 1fr;
   }
+  .library-header h2 { font-size: 11px; }
+  .song-name { font-size: 11px; }
+  .piano-key { height: 38px; font-size: 12px; }
+  .note-key-badge { width: 56px; height: 56px; font-size: 28px; }
+  .practice-main { padding: 6px; }
+  .score-preview { padding: 5px 8px; }
 }
 
 @media (max-width: 480px) {
@@ -475,6 +480,97 @@ body {
 }
 .no-song-placeholder .icon { font-size: 48px; opacity: 0.4; }
 .no-song-placeholder p { font-size: 13px; }
+
+/* ===== PROGRESS BAR ===== */
+.progress-bar-track {
+  flex-shrink: 0;
+  height: 6px;
+  background: var(--bg-card);
+  position: relative;
+  overflow: visible;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+  border-radius: 0 3px 3px 0;
+  transition: width 0.25s ease;
+  min-width: 2px;
+}
+.progress-label {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  color: var(--text-muted);
+  line-height: 1;
+  pointer-events: none;
+  white-space: nowrap;
+  background: var(--bg-card);
+  padding: 1px 3px;
+  border-radius: 3px;
+}
+
+/* ===== MODE BADGE ===== */
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.mode-badge.mode-auto {
+  background: rgba(100,180,255,0.12);
+  border: 1px solid rgba(100,180,255,0.3);
+  color: #6ab4ff;
+}
+.mode-badge.mode-practice {
+  background: rgba(212,180,80,0.12);
+  border: 1px solid rgba(212,180,80,0.35);
+  color: var(--accent);
+}
+
+/* ===== CHORD PROGRESS ===== */
+.chord-progress {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: -4px;
+}
+.chord-key-indicator {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  transition: all 0.15s;
+}
+.chord-key-indicator.pending {
+  background: var(--key-active-bg);
+  border: 2px solid var(--accent-dim);
+  color: var(--accent-bright);
+}
+.chord-key-indicator.done {
+  background: rgba(80,212,128,0.1);
+  border: 2px solid var(--success);
+  color: var(--success);
+  opacity: 0.6;
+}
+
+/* ===== PRACTICE BUTTON ===== */
+.ctrl-btn.practice-btn {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+.ctrl-btn.practice-btn:hover {
+  background: rgba(212,180,80,0.12);
+}
 
 /* ===== PIANO KEYBOARD ===== */
 .keyboard-area {
