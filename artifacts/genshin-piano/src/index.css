@@ -400,7 +400,7 @@ body {
   justify-content: center;
   width: 80px;
   height: 80px;
-  border-radius: var(--radius-lg);
+  border-radius: 50%;
   font-size: 40px;
   font-weight: 800;
   font-family: 'SF Mono', 'Fira Code', monospace;
@@ -438,7 +438,7 @@ body {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 5px;
+  border-radius: 50%;
   font-size: 18px;
   font-weight: 700;
   font-family: 'SF Mono', 'Fira Code', monospace;
@@ -499,8 +499,9 @@ body {
   border-top: 1px solid var(--border);
   padding: 6px 12px 8px;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 8px;
   /* Fixed at 40% of viewport height */
   flex: 0 0 40dvh;
   overflow: hidden;
@@ -508,36 +509,74 @@ body {
   -webkit-user-select: none;
 }
 
-/*
- * Piano octave: 28-column CSS grid
- *   Natural keys  → span 4 cols each, placed in row 2
- *   Sharp keys    → span 2 cols each, placed in row 1
- *   Column maths ensure sharp centers fall exactly between adjacent naturals.
- */
-.piano-octave {
-  display: grid;
-  grid-template-columns: repeat(28, 1fr);
-  grid-template-rows: auto auto;
-  column-gap: 3px;
-  row-gap: 3px;
-  flex: 1;
+/* Left column: shift toggle button */
+.shift-toggle-col {
+  display: flex;
   align-items: center;
-  justify-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
 }
 
-/* ===== NATURAL KEYS (piano rectangle) ===== */
+.shift-toggle-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: clamp(44px, 7dvh, 72px);
+  height: clamp(44px, 7dvh, 72px);
+  border-radius: 50%;
+  border: 2px solid var(--border-light);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  padding: 0;
+}
+.shift-toggle-btn:hover {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+  filter: brightness(1.2);
+}
+.shift-toggle-btn.active {
+  border-color: var(--accent);
+  background: var(--key-active-bg);
+  color: var(--accent-bright);
+  box-shadow: 0 0 14px rgba(212,180,80,0.4);
+}
+.shift-icon  { font-size: clamp(14px, 2.2dvh, 22px); font-weight: 800; line-height: 1; }
+.shift-label { font-size: clamp(8px,  1.1dvh, 11px);  font-weight: 700; line-height: 1; }
+.shift-key   { font-size: clamp(6px,  0.9dvh,  9px);  opacity: 0.55;   line-height: 1; }
+
+/* Right column: 3 octave rows stacked */
+.keyboard-keys {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.piano-octave {
+  display: flex;
+  flex-direction: row;
+  gap: 3px;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== NATURAL KEYS (circle buttons) ===== */
 .piano-key {
-  /* Width narrower than height → portrait rectangle like real piano keys */
-  width:  clamp(28px, 4.8dvh, 62px);
-  height: clamp(40px, 7.5dvh, 88px);
-  border-radius: 6px 6px 4px 4px;
+  width:  clamp(32px, 5.5dvh, 68px);
+  height: clamp(32px, 5.5dvh, 68px);
+  border-radius: 50%;
   border: 2px solid transparent;
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* Label sits near the bottom, like real piano keys */
-  justify-content: flex-end;
-  padding-bottom: 5px;
+  justify-content: center;
   gap: 1px;
   cursor: pointer;
   font-family: 'SF Mono', 'Fira Code', monospace;
@@ -574,51 +613,6 @@ body {
   line-height: 0.8;
 }
 
-/* ===== SHARP KEYS (narrow dark rectangles, like black piano keys) ===== */
-.sharp-key {
-  /* Narrower and shorter than natural keys */
-  width:  clamp(17px, 2.9dvh, 38px);
-  height: clamp(24px, 4.5dvh, 54px);
-  border-radius: 4px 4px 3px 3px;
-  border: 1px solid transparent;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  padding-bottom: 4px;
-  gap: 0;
-  cursor: pointer;
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  transition: all 0.08s;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 3px 0 rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.05);
-}
-/* Very dark backgrounds — like real black piano keys */
-.sharp-key.octave-high { background: #160b2e; border-color: #3a2565; color: #c0a0f0; }
-.sharp-key.octave-mid  { background: #081628; border-color: #183860; color: #90d0f8; }
-.sharp-key.octave-low  { background: #081410; border-color: #123525; color: #80e8b0; }
-
-.sharp-key:hover {
-  filter: brightness(1.4);
-  transform: scale(1.1);
-}
-.sharp-key:active {
-  filter: brightness(0.8);
-  transform: scale(0.92);
-}
-
-.sharp-num {
-  font-size: clamp(6px, 0.9dvh, 10px);
-  font-weight: 700;
-  line-height: 1;
-  opacity: 0.9;
-}
-.sharp-sym {
-  font-size: clamp(6px, 0.9dvh, 10px);
-  line-height: 0.9;
-  opacity: 0.7;
-}
 
 .piano-key.octave-high { background: var(--key-high-bg); border-color: #3a2560; color: var(--key-high); }
 .piano-key.octave-mid  { background: var(--key-mid-bg);  border-color: #1a3a50; color: var(--key-mid);  }
